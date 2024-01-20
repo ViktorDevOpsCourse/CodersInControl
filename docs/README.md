@@ -2,4 +2,4 @@
 
 ### Промоушин
 Перша інтерація схеми промоушена
-<img src="assets/photo_2024-01-20 18.40.23.jpeg">
+<img src="assets/promote_shema.png">
