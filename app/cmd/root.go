@@ -7,7 +7,7 @@ package cmd
 import (
 	"context"
 	"github.com/spf13/cobra"
-	"github.com/viktordevopscourse/codersincontrol/app/internal/services/k8s"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/app"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
 	"os"
 )
@@ -29,36 +29,14 @@ func Execute() {
 	}
 }
 
-func init() {
-	cobra.OnInitialize(initConfig)
-
-}
-
-// initConfig reads in config file and ENV variables if set.
-func initConfig() {
-
-}
-
 // run represents the Run function for rootCmd
 func run(cmd *cobra.Command, args []string) {
 	ctx := context.Background()
 	log := logger.GetDefaultLogger()
 	logger.ToContext(ctx, log)
 
-	//cfg, err := config.ParseAppConfig(config.AppVersion)
-	//if err != nil {
-	//	logger.GetDefaultLogger().Fatalln(err)
-	//}
-
-	//slackBot := bot.NewSlackBot(ctx, bot.SlackOptions{
-	//	ClientOptions: bot.SlackClientOptions{
-	//		SlackBotToken: cfg.Bot.SlackBotToken,
-	//		SlackAppToken: cfg.Bot.SlackAppToken,
-	//		IsDebug:       true,
-	//	},
-	//})
-	//go slackBot.Run()
-	//slackBot.ListenEvents()
-
-	k8s.NewConnection()
+	err := app.Run(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

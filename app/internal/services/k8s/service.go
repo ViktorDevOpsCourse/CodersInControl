@@ -5,5 +5,10 @@ type K8S struct {
 }
 
 func NewK8SService() *K8S {
-	return &K8S{}
+	cluster := NewCluster()
+	return &K8S{
+		clusters: []Cluster{
+			cluster,
+		},
+	}
 }

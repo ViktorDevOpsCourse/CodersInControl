@@ -9,6 +9,11 @@ import (
 
 var AppVersion = "unknown version"
 
+var AllowNamespaces = map[string]struct{}{
+	"stage": {},
+	"prod":  {},
+}
+
 type Config struct {
 	Bot BotConfig
 }
