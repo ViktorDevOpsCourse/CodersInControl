@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/config"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/bot"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/k8s"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
@@ -14,16 +15,20 @@ func Run(ctx context.Context) error {
 		logger.GetDefaultLogger().Fatalln(err)
 	}
 
+	dispatcher := services.NewJobDispatcher(k8s.NewK8SService())
 	slackBot := bot.NewSlackBot(ctx, bot.SlackOptions{
 		ClientOptions: bot.SlackClientOptions{
 			SlackBotToken: cfg.Bot.SlackBotToken,
 			SlackAppToken: cfg.Bot.SlackAppToken,
 			IsDebug:       true,
 		},
+		BotOptions: bot.SlackBotOptions{
+			ActionProcessorQueue: dispatcher.GetActionProcessorQueue(),
+		},
 	})
-	slackBot.Run()
 
-	k8s.NewK8SService()
+	slackBot.Run()
+	dispatcher.Run()
 
 	return nil
 }

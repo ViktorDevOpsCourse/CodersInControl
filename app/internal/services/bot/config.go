@@ -1,9 +1,17 @@
 package bot
 
-import "strings"
+import (
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/actions"
+	"strings"
+)
 
 type SlackOptions struct {
 	ClientOptions SlackClientOptions
+	BotOptions    SlackBotOptions
+}
+
+type SlackBotOptions struct {
+	ActionProcessorQueue chan actions.Action
 }
 
 type SlackClientOptions struct {

@@ -2,29 +2,37 @@ package bot
 
 import (
 	"context"
+	"fmt"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/actions"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
+	"regexp"
 )
+
+var re = regexp.MustCompile(`<@(\S+)> (promote|list|diff|rollback) (\S+)@(\S+) to (stage|qa|prod)`)
 
 type Bot interface {
 }
 
 type SlackBot struct {
-	ctx    context.Context
-	client *Client
+	ctx         context.Context
+	client      *Client
+	actionQueue chan<- actions.Action
 }
 
 func NewSlackBot(ctx context.Context, options SlackOptions) *SlackBot {
 	return &SlackBot{
-		ctx:    ctx,
-		client: NewClient(ctx, options.ClientOptions),
+		ctx:         ctx,
+		client:      NewClient(ctx, options.ClientOptions),
+		actionQueue: options.BotOptions.ActionProcessorQueue,
 	}
 }
 
 func (s *SlackBot) Run() {
 	go func() {
+		// connect to slack bot via socket
 		err := s.client.event.Run()
 		if err != nil {
 			panic(err)
@@ -36,11 +44,11 @@ func (s *SlackBot) Run() {
 
 func (s *SlackBot) listenEvents() {
 	for event := range s.client.event.Events {
-		s.handleEvent(event)
+		s.handleEvents(event)
 	}
 }
 
-func (s *SlackBot) handleEvent(event socketmode.Event) {
+func (s *SlackBot) handleEvents(event socketmode.Event) {
 	log := logger.FromContext(s.ctx)
 
 	switch event.Type {
@@ -53,29 +61,99 @@ func (s *SlackBot) handleEvent(event socketmode.Event) {
 	case socketmode.EventTypeHello:
 		log.Info("The client has successfully connected to the server.")
 	case socketmode.EventTypeEventsAPI:
-		eventsAPIEvent, ok := event.Data.(slackevents.EventsAPIEvent)
-		if !ok {
-			return
-		}
-
-		s.client.event.Ack(*event.Request)
-
-		switch eventsAPIEvent.Type {
-		case slackevents.CallbackEvent:
-			innerEvent := eventsAPIEvent.InnerEvent
-			switch innerEventData := innerEvent.Data.(type) {
-			case *slackevents.AppMentionEvent:
-				if innerEventData.ThreadTimeStamp == "" {
-					innerEventData.ThreadTimeStamp = innerEventData.TimeStamp
-				}
-				ts := innerEventData.ThreadTimeStamp
-
-				s.client.api.PostMessage(innerEventData.Channel, slack.MsgOptionText(":bow: I don't know how to help you", false), slack.MsgOptionTS(ts))
-			default:
-				s.client.event.Debugf("unsupported Events API event received: %v", eventsAPIEvent.Type)
-			}
-		}
+		s.handleEventTypeEventsAPI(event)
 	default:
 		log.Errorf("Unexpected event type received: %s", event.Type)
+	}
+}
+
+func (s *SlackBot) handleEventTypeEventsAPI(event socketmode.Event) {
+	eventsAPIEvent, ok := event.Data.(slackevents.EventsAPIEvent)
+	if !ok {
+		return
+	}
+
+	s.client.event.Ack(*event.Request)
+
+	switch eventsAPIEvent.Type {
+	case slackevents.CallbackEvent:
+
+		switch innerEventData := eventsAPIEvent.InnerEvent.Data.(type) {
+		case *slackevents.AppMentionEvent:
+			s.appMentionEventHandler(innerEventData)
+		default:
+			s.client.event.Debugf("unsupported Events API event received: %v", eventsAPIEvent.Type)
+		}
+	}
+}
+
+func (s *SlackBot) appMentionEventHandler(event *slackevents.AppMentionEvent) {
+	// TODO validate access for user
+	log := logger.FromContext(s.ctx)
+
+	if event.ThreadTimeStamp == "" {
+		event.ThreadTimeStamp = event.TimeStamp
+	}
+	ts := event.ThreadTimeStamp
+
+	command := parseEventText(event.Text)
+	err := validateEventCommand(command)
+	if err != nil {
+		_, _, err = s.client.api.PostMessage(event.Channel, slack.MsgOptionText(err.Error(), false), slack.MsgOptionTS(ts))
+		if err != nil {
+			log.Errorf("Failed response on appMentionEventHandler. Error `%s`", err)
+		}
+		return
+	}
+
+	messageResponse := make(chan string)
+
+	// waiting response
+	go func(message chan string, ts string) {
+		for {
+			m, ok := <-message
+			if !ok {
+				return
+			}
+
+			_, _, err = s.client.api.PostMessage(event.Channel, slack.MsgOptionText(m, false), slack.MsgOptionTS(ts))
+			if err != nil {
+				log.Errorf("Failed response on appMentionEventHandler. Error `%s`", err)
+			}
+		}
+	}(messageResponse, ts)
+
+	s.actionQueue <- actions.CreateAction(command["Type"], event, messageResponse)
+
+}
+
+func validateEventCommand(command map[string]string) error {
+	if command["Type"] == "" {
+		return fmt.Errorf("unknown command")
+	}
+
+	if command["Service"] == "" {
+		return fmt.Errorf("unknown service")
+	}
+
+	if command["Build"] == "" {
+		return fmt.Errorf("servie build not specified")
+	}
+
+	if command["Environment"] == "" {
+		return fmt.Errorf("invalid environment")
+	}
+
+	return nil
+}
+
+func parseEventText(input string) map[string]string {
+
+	matches := re.FindStringSubmatch(input)
+	return map[string]string{
+		"Type":        matches[2],
+		"Service":     matches[3],
+		"Build":       matches[4],
+		"Environment": matches[5],
 	}
 }
