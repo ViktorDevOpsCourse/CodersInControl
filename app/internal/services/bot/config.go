@@ -8,6 +8,7 @@ import (
 type SlackOptions struct {
 	ClientOptions SlackClientOptions
 	BotOptions    SlackBotOptions
+	AuthOptions   AuthConfig
 }
 
 type SlackBotOptions struct {
@@ -28,4 +29,8 @@ func (c *SlackClientOptions) IsValid() bool {
 		return false
 	}
 	return true
+}
+
+type AuthConfig struct {
+	AllowedUsers map[string]struct{}
 }

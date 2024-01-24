@@ -2,16 +2,12 @@ package bot
 
 import (
 	"context"
-	"fmt"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/actions"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
-	"regexp"
 )
-
-var re = regexp.MustCompile(`<@(\S+)> (promote|list|diff|rollback) (\S+)@(\S+) to (stage|qa|prod)`)
 
 type Bot interface {
 }
@@ -20,13 +16,16 @@ type SlackBot struct {
 	ctx         context.Context
 	client      *Client
 	actionQueue chan<- actions.Action
+	auth        *Auth
 }
 
 func NewSlackBot(ctx context.Context, options SlackOptions) *SlackBot {
+	c := NewClient(ctx, options.ClientOptions)
 	return &SlackBot{
 		ctx:         ctx,
-		client:      NewClient(ctx, options.ClientOptions),
+		client:      c,
 		actionQueue: options.BotOptions.ActionProcessorQueue,
+		auth:        NewAuth(c.api, options.AuthOptions),
 	}
 }
 
@@ -80,6 +79,10 @@ func (s *SlackBot) handleEventTypeEventsAPI(event socketmode.Event) {
 
 		switch innerEventData := eventsAPIEvent.InnerEvent.Data.(type) {
 		case *slackevents.AppMentionEvent:
+			// replay to thread
+			if innerEventData.ThreadTimeStamp == "" {
+				innerEventData.ThreadTimeStamp = innerEventData.TimeStamp
+			}
 			s.appMentionEventHandler(innerEventData)
 		default:
 			s.client.event.Debugf("unsupported Events API event received: %v", eventsAPIEvent.Type)
@@ -88,25 +91,28 @@ func (s *SlackBot) handleEventTypeEventsAPI(event socketmode.Event) {
 }
 
 func (s *SlackBot) appMentionEventHandler(event *slackevents.AppMentionEvent) {
-	// TODO validate access for user
 	log := logger.FromContext(s.ctx)
 
-	if event.ThreadTimeStamp == "" {
-		event.ThreadTimeStamp = event.TimeStamp
-	}
-	ts := event.ThreadTimeStamp
-
-	command := parseEventText(event.Text)
-	err := validateEventCommand(command)
+	isAllow, err := s.auth.hasPermissions(event.User)
 	if err != nil {
-		_, _, err = s.client.api.PostMessage(event.Channel, slack.MsgOptionText(err.Error(), false), slack.MsgOptionTS(ts))
-		if err != nil {
-			log.Errorf("Failed response on appMentionEventHandler. Error `%s`", err)
-		}
+		log.Error(err)
+		s.callBackMessage(event.Channel, "something went wrong", event.ThreadTimeStamp)
 		return
 	}
 
-	s.actionQueue <- actions.CreateAction(command["Type"], event, s.callBackMessage)
+	if !isAllow {
+		log.Infof("user `%s` do not have permissions", event.User)
+		s.callBackMessage(event.Channel, "nice try :ghost:, you do not have permissions :octagonal_sign:", event.ThreadTimeStamp)
+		return
+	}
+
+	act, err := actions.NewAction(event, s.callBackMessage)
+	if err != nil {
+		log.Errorf("Failed create action `%s`", err)
+		return
+	}
+
+	s.actionQueue <- act
 }
 
 func (s *SlackBot) callBackMessage(channel, message, messageTimestamp string) {
@@ -114,36 +120,5 @@ func (s *SlackBot) callBackMessage(channel, message, messageTimestamp string) {
 	_, _, err := s.client.api.PostMessage(channel, slack.MsgOptionText(message, false), slack.MsgOptionTS(messageTimestamp))
 	if err != nil {
 		log.Errorf("Failed response on appMentionEventHandler. Error `%s`", err)
-	}
-}
-
-func validateEventCommand(command map[string]string) error {
-	if command["Type"] == "" {
-		return fmt.Errorf("unknown command")
-	}
-
-	if command["Service"] == "" {
-		return fmt.Errorf("unknown service")
-	}
-
-	if command["Build"] == "" {
-		return fmt.Errorf("servie build not specified")
-	}
-
-	if command["Environment"] == "" {
-		return fmt.Errorf("invalid environment")
-	}
-
-	return nil
-}
-
-func parseEventText(input string) map[string]string {
-
-	matches := re.FindStringSubmatch(input)
-	return map[string]string{
-		"Type":        matches[2],
-		"Service":     matches[3],
-		"Build":       matches[4],
-		"Environment": matches[5],
 	}
 }
