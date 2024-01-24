@@ -7,13 +7,13 @@ import (
 
 type PromoteAction struct {
 	event            *slackevents.AppMentionEvent
-	callbackResponse chan<- string
+	callbackResponse func(channel, message, messageTimestamp string)
 }
 
-func CreatePromoteAction(event *slackevents.AppMentionEvent, callbackResponse chan<- string) Action {
+func CreatePromoteAction(event *slackevents.AppMentionEvent, callback func(channel, message, messageTimestamp string)) Action {
 	return &PromoteAction{
 		event:            event,
-		callbackResponse: callbackResponse,
+		callbackResponse: callback,
 	}
 }
 
@@ -26,13 +26,11 @@ func (p *PromoteAction) GetActionID() string {
 }
 
 func (p *PromoteAction) Done() {
-	defer close(p.callbackResponse)
+
 }
 
 func (p *PromoteAction) SendResponse(message string) {
-	go func() {
-		p.callbackResponse <- message
-	}()
+	p.callbackResponse(p.event.Channel, message, p.event.ThreadTimeStamp)
 }
 
 func (p *PromoteAction) GetName() string {

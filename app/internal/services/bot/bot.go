@@ -106,25 +106,15 @@ func (s *SlackBot) appMentionEventHandler(event *slackevents.AppMentionEvent) {
 		return
 	}
 
-	messageResponse := make(chan string)
+	s.actionQueue <- actions.CreateAction(command["Type"], event, s.callBackMessage)
+}
 
-	// waiting response
-	go func(message chan string, ts string) {
-		for {
-			m, ok := <-message
-			if !ok {
-				return
-			}
-
-			_, _, err = s.client.api.PostMessage(event.Channel, slack.MsgOptionText(m, false), slack.MsgOptionTS(ts))
-			if err != nil {
-				log.Errorf("Failed response on appMentionEventHandler. Error `%s`", err)
-			}
-		}
-	}(messageResponse, ts)
-
-	s.actionQueue <- actions.CreateAction(command["Type"], event, messageResponse)
-
+func (s *SlackBot) callBackMessage(channel, message, messageTimestamp string) {
+	log := logger.FromDefaultContext()
+	_, _, err := s.client.api.PostMessage(channel, slack.MsgOptionText(message, false), slack.MsgOptionTS(messageTimestamp))
+	if err != nil {
+		log.Errorf("Failed response on appMentionEventHandler. Error `%s`", err)
+	}
 }
 
 func validateEventCommand(command map[string]string) error {

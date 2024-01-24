@@ -22,11 +22,11 @@ type Action interface {
 	Done()
 }
 
-func CreateAction(name string, botEvent *slackevents.AppMentionEvent, responseChan chan<- string) Action {
+func CreateAction(name string, botEvent *slackevents.AppMentionEvent, callback func(channel, message, messageTimestamp string)) Action {
 	var action Action
 	switch name {
 	case PromoteActionName:
-		action = CreatePromoteAction(botEvent, responseChan)
+		action = CreatePromoteAction(botEvent, callback)
 	}
 
 	return action
