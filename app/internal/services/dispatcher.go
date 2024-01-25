@@ -2,20 +2,21 @@ package services
 
 import (
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/actions"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/jobs"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/k8s"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
 )
 
 type JobDispatcher struct {
 	k8sService  *k8s.K8S
-	jobs        map[string]Job
+	jobs        map[string]jobs.Job
 	actionQueue chan actions.Action
 }
 
 func NewJobDispatcher(k8sService *k8s.K8S) JobDispatcher {
 	return JobDispatcher{
 		k8sService:  k8sService,
-		jobs:        make(map[string]Job),
+		jobs:        make(map[string]jobs.Job),
 		actionQueue: make(chan actions.Action),
 	}
 }
@@ -30,13 +31,13 @@ func (d *JobDispatcher) Run() {
 		}
 
 		if _, ok := d.jobs[botAction.GetActionID()]; ok {
-			botAction.SendResponse("action already processing, wait please")
+			botAction.ResponseOnAction("action already processing, wait please")
 			continue
 		}
 
 		go func(botAction actions.Action) {
-			job := NewJob(botAction)
-			job.Launch()
+			j := jobs.NewJob(botAction, d.k8sService)
+			j.Launch()
 		}(botAction)
 	}
 }

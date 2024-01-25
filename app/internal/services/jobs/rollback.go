@@ -1,0 +1,24 @@
+package jobs
+
+import (
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/actions"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/k8s"
+)
+
+type RollbackJob struct {
+	botAction  actions.Action
+	k8sService *k8s.K8S
+}
+
+func (r *RollbackJob) Launch() {
+	// TODO get old state from storage
+	// TODO send request to run pipeline on update service version
+	// TODO receive answer
+	// TODO run watcher on update
+	// TODO update state/storage
+
+}
+
+func (r *RollbackJob) ResponseToBot(message string) {
+	r.botAction.ResponseOnAction(message)
+}

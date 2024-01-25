@@ -5,7 +5,7 @@ import (
 )
 
 type K8S struct {
-	clusters map[string]Cluster
+	clusters map[string]Cluster // map[namespace]Cluster
 }
 
 func NewK8SService(cfg Config) *K8S {
@@ -31,4 +31,7 @@ func NewK8SService(cfg Config) *K8S {
 	}
 
 	return k8s
+}
+
+func (k *K8S) Get() {
 }

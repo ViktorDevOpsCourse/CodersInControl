@@ -9,8 +9,8 @@ import (
 
 type Cluster struct {
 	client       Client
-	Applications []Application
-	Namespaces   []Namespace
+	Applications map[string]Application
+	Namespaces   map[string]Namespace
 }
 
 func NewCluster(client Client) Cluster {
@@ -18,8 +18,8 @@ func NewCluster(client Client) Cluster {
 
 	c := Cluster{
 		client:       client,
-		Applications: make([]Application, 0),
-		Namespaces:   make([]Namespace, 0),
+		Applications: make(map[string]Application),
+		Namespaces:   make(map[string]Namespace),
 	}
 
 	err := c.initReadCluster()
@@ -60,22 +60,29 @@ func (c *Cluster) readAllNamespaces(ctx context.Context) error {
 			continue
 		}
 
-		c.Namespaces = append(c.Namespaces, Namespace{
+		c.Namespaces[n.GetName()] = Namespace{
 			Name: n.GetName(),
-		})
+		}
 	}
 
 	return nil
 }
 
 func (c *Cluster) readAllApps(ctx context.Context, namespace string) error {
+	log := logger.FromContext(ctx)
+
 	deployments, err := c.client.http.AppsV1().Deployments(namespace).List(ctx, v1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("error get list apps in `%s` namespace. Error `%s", namespace, err)
 	}
 
 	for _, deploy := range deployments.Items {
-		c.Applications = append(c.Applications, Application{
+		if app, ok := c.Applications[deploy.GetName()]; ok {
+			log.Errorf("Application `%s` already present in namespace `%s`", deploy.GetName(), app.Namespace)
+			continue
+		}
+
+		c.Applications[deploy.GetName()] = Application{
 			Name:                 deploy.GetName(),
 			Namespace:            deploy.GetNamespace(),
 			AppliedConfiguration: deploy.Annotations["kubectl.kubernetes.io/last-applied-configuration"],
@@ -87,7 +94,7 @@ func (c *Cluster) readAllApps(ctx context.Context, namespace string) error {
 			Status: ApplicationStatus{
 				AvailableReplicas: deploy.Status.AvailableReplicas,
 			},
-		})
+		}
 	}
 
 	return nil
