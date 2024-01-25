@@ -2,29 +2,29 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Cluster struct {
-	client     Client
-	Namespaces []Namespace
+	client       Client
+	Applications []Application
+	Namespaces   []Namespace
 }
 
-func NewCluster() Cluster {
+func NewCluster(client Client) Cluster {
 	log := logger.FromDefaultContext()
-	client, err := NewClient()
-	if err != nil {
-		log.Fatalf("Failed connection to cluster. Err `%s`", err)
-		return Cluster{}
-	}
+
 	c := Cluster{
-		client: client,
+		client:       client,
+		Applications: make([]Application, 0),
+		Namespaces:   make([]Namespace, 0),
 	}
 
-	err = c.initReadCluster()
+	err := c.initReadCluster()
 	if err != nil {
-		log.Fatalf("Failed connection to cluster. Err `%s`", err)
+		log.Fatalf("Failed init read cluster. Err `%s`", err)
 		return Cluster{}
 	}
 
@@ -33,32 +33,61 @@ func NewCluster() Cluster {
 
 func (c *Cluster) initReadCluster() error {
 	ctx := context.TODO()
-	log := logger.FromDefaultContext()
+
+	err := c.readAllNamespaces(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, namespace := range c.Namespaces {
+		err := c.readAllApps(ctx, namespace.GetName())
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *Cluster) readAllNamespaces(ctx context.Context) error {
 	namespaces, err := c.client.http.CoreV1().Namespaces().List(ctx, v1.ListOptions{})
 	if err != nil {
 		return err
 	}
 
 	for _, n := range namespaces.Items {
-		deployments, err := c.client.http.AppsV1().Deployments(n.GetName()).List(ctx, v1.ListOptions{})
-		if err != nil {
-			log.WithField("Namespace", n.Namespace).Errorf("Error get list deploymrnts. Error `%s", err)
+		if _, ok := excludeNamespaces[n.GetName()]; ok {
 			continue
 		}
 
-		namespace := Namespace{
-			Name:        n.GetName(),
-			Deployments: make([]Deployment, 0),
-		}
+		c.Namespaces = append(c.Namespaces, Namespace{
+			Name: n.GetName(),
+		})
+	}
 
-		for _, deploy := range deployments.Items {
-			namespace.Deployments = append(namespace.Deployments, Deployment{
-				Name: deploy.GetName(),
-			})
-		}
+	return nil
+}
 
-		c.Namespaces = append(c.Namespaces, namespace)
+func (c *Cluster) readAllApps(ctx context.Context, namespace string) error {
+	deployments, err := c.client.http.AppsV1().Deployments(namespace).List(ctx, v1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("error get list apps in `%s` namespace. Error `%s", namespace, err)
+	}
 
+	for _, deploy := range deployments.Items {
+		c.Applications = append(c.Applications, Application{
+			Name:                 deploy.GetName(),
+			Namespace:            deploy.GetNamespace(),
+			AppliedConfiguration: deploy.Annotations["kubectl.kubernetes.io/last-applied-configuration"],
+			CreatedAt:            deploy.CreationTimestamp.Time,
+			Labels:               deploy.GetLabels(),
+			Replicas:             deploy.Spec.Replicas,
+			SelectorMatchLabels:  deploy.Spec.Selector.MatchLabels,
+			Image:                deploy.Spec.Template.Spec.Containers[0].Image, // todo understand how update this field
+			Status: ApplicationStatus{
+				AvailableReplicas: deploy.Status.AvailableReplicas,
+			},
+		})
 	}
 
 	return nil

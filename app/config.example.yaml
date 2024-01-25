@@ -1,0 +1,9 @@
+clusters:
+  dev:
+    file: "/Users/viktor/.kube/config"
+  stage:
+    file: "/Main/config"
+
+bot:
+  admins:
+    - "viktorzhabskiy"

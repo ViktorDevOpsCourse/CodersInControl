@@ -102,7 +102,7 @@ func (s *SlackBot) appMentionEventHandler(event *slackevents.AppMentionEvent) {
 
 	if !isAllow {
 		log.Infof("user `%s` do not have permissions", event.User)
-		s.callBackMessage(event.Channel, "nice try :ghost:, you do not have permissions :octagonal_sign:", event.ThreadTimeStamp)
+		s.callBackMessage(event.Channel, "nice try :stuck_out_tongue_closed_eyes:, you do not have permissions :no_entry::police_car:", event.ThreadTimeStamp)
 		return
 	}
 

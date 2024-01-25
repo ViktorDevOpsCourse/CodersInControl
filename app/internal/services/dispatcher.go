@@ -30,7 +30,7 @@ func (d *JobDispatcher) Run() {
 		}
 
 		if _, ok := d.jobs[botAction.GetActionID()]; ok {
-			botAction.SendResponse("action already processing wait please")
+			botAction.SendResponse("action already processing, wait please")
 			continue
 		}
 

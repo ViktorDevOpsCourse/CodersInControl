@@ -15,14 +15,14 @@ func Run(ctx context.Context) error {
 		logger.GetDefaultLogger().Fatalln(err)
 	}
 
-	// TODO read it from config file or from db. Different envs
-	botAuthConfig := bot.AuthConfig{
-		AllowedUsers: map[string]struct{}{
-			"viktorzhabskiy": struct{}{},
-		},
+	k8sConfig := k8s.Config{
+		Clusters: make(map[string]string),
+	}
+	for environment, clusterOption := range cfg.K8S.Clusters {
+		k8sConfig.Clusters[environment] = clusterOption.File
 	}
 
-	dispatcher := services.NewJobDispatcher(k8s.NewK8SService())
+	dispatcher := services.NewJobDispatcher(k8s.NewK8SService(k8sConfig))
 	slackBot := bot.NewSlackBot(ctx, bot.SlackOptions{
 		ClientOptions: bot.SlackClientOptions{
 			SlackBotToken: cfg.Bot.SlackBotToken,
@@ -32,7 +32,9 @@ func Run(ctx context.Context) error {
 		BotOptions: bot.SlackBotOptions{
 			ActionProcessorQueue: dispatcher.GetActionProcessorQueue(),
 		},
-		AuthOptions: botAuthConfig,
+		AuthOptions: bot.AuthConfig{
+			AllowedUsers: cfg.Bot.Admins,
+		},
 	})
 
 	slackBot.Run()
