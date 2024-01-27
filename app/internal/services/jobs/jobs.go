@@ -1,15 +1,16 @@
 package jobs
 
 import (
+	"fmt"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/actions"
-	"github.com/viktordevopscourse/codersincontrol/app/internal/services/k8s"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters"
 )
 
 const (
-	ListJobName     = "list"
-	DiffJobName     = "diff"
-	PromoteJobName  = "promote"
-	RollbackJobName = "rollback"
+	jobList     = "list"
+	JobDiff     = "diff"
+	JobPromote  = "promote"
+	JobRollBack = "rollback"
 )
 
 type Job interface {
@@ -17,20 +18,21 @@ type Job interface {
 	ResponseToBot(message string)
 }
 
-func NewJob(botAction actions.Action, k8sService *k8s.K8S) Job {
-	var job Job
+func NewJob(botAction actions.Action, cluster *clusters.Cluster) (Job, error) {
 
-	switch botAction.GetName() {
-	case ListJobName:
-	case DiffJobName:
-	case PromoteJobName:
-		job = &PromoteJob{
-			botAction:  botAction,
-			k8sService: k8sService,
-		}
-	case RollbackJobName:
-	default:
-
+	switch botAction.GetCommand() {
+	case jobList:
+		return &ListJob{
+			botAction: botAction,
+			cluster:   cluster,
+		}, nil
+	case JobDiff:
+	case JobPromote:
+		return &PromoteJob{
+			botAction: botAction,
+			cluster:   cluster,
+		}, nil
+	case JobRollBack:
 	}
-	return job
+	return nil, fmt.Errorf("unknown job command `%s`", botAction.GetCommand())
 }

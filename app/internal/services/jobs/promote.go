@@ -1,13 +1,14 @@
 package jobs
 
 import (
+	"fmt"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/actions"
-	"github.com/viktordevopscourse/codersincontrol/app/internal/services/k8s"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters"
 )
 
 type PromoteJob struct {
-	botAction  actions.Action
-	k8sService *k8s.K8S
+	botAction actions.Action
+	cluster   *clusters.Cluster
 }
 
 func (p *PromoteJob) Launch() {
@@ -15,6 +16,7 @@ func (p *PromoteJob) Launch() {
 	// TODO receive answer
 	// TODO run watcher on update
 	// TODO update state/storage
+	fmt.Println(p.cluster.GetApplications())
 
 }
 

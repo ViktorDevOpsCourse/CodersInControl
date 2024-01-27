@@ -1,4 +1,4 @@
-package k8s
+package clusters
 
 var excludeNamespaces = map[string]struct{}{
 	"flux-system":     struct{}{},
@@ -8,10 +8,6 @@ var excludeNamespaces = map[string]struct{}{
 }
 
 type Namespace struct {
-	Name string
-}
-
-type Deployment struct {
 	Name string
 }
 

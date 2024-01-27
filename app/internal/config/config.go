@@ -12,14 +12,10 @@ const AppConfigPath = "./config.example.yaml"
 
 var AppVersion = "unknown version"
 
-var AllowNamespaces = map[string]struct{}{
-	"stage": {},
-	"prod":  {},
-}
-
 type Config struct {
-	Bot BotConfig
-	K8S K8SConfig
+	Bot                   BotConfig
+	K8S                   K8SConfig
+	ServiceConfigFilePath string `conf:"env:SERVICE_CONFIG_FILE_PATH"`
 }
 
 type FileConfig struct {
@@ -67,7 +63,11 @@ func ParseAppConfig(version string) (Config, error) {
 		return cfg, err
 	}
 
-	yamlFile, err := os.ReadFile(AppConfigPath)
+	if cfg.ServiceConfigFilePath == "" {
+		cfg.ServiceConfigFilePath = AppConfigPath
+	}
+
+	yamlFile, err := os.ReadFile(cfg.ServiceConfigFilePath)
 	if err != nil {
 		fmt.Printf("Failed read config file: %v", err)
 		os.Exit(0)

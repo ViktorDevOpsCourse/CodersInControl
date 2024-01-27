@@ -10,7 +10,7 @@ import (
 var re = regexp.MustCompile(`<@(\S+)> (promote|list|diff|rollback) (\S+)@(\S+) to (stage|qa|prod)`)
 
 type ActionMetadata interface {
-	GetName() string
+	GetCommand() string
 	GetServiceName() string
 	GetBuildTag() string
 	GetEnvironment() string
@@ -24,7 +24,7 @@ type Action interface {
 }
 
 type ActionEvent struct {
-	Name        string
+	Command     string
 	Service     string
 	BuildTag    string
 	Environment string
@@ -44,7 +44,7 @@ func NewAction(event *slackevents.AppMentionEvent, callback func(channel, messag
 }
 
 func (e *ActionEvent) validate() error {
-	if e.Name == "" {
+	if e.Command == "" {
 		return fmt.Errorf("unknown command")
 	}
 
@@ -76,15 +76,15 @@ func createAction(event *ActionEvent, callback func(channel, message, messageTim
 }
 
 func (p *BotAction) GetActionID() string {
-	return fmt.Sprintf("%s:%s:%s:%s", p.event.Name, p.event.Service, p.event.BuildTag, p.event.Environment)
+	return fmt.Sprintf("%s:%s:%s:%s", p.event.Command, p.event.Service, p.event.BuildTag, p.event.Environment)
 }
 
 func (p *BotAction) ResponseOnAction(message string) {
 	p.callbackResponse(p.event.rawEvent.Channel, message, p.event.rawEvent.ThreadTimeStamp)
 }
 
-func (p *BotAction) GetName() string {
-	return p.event.Name
+func (p *BotAction) GetCommand() string {
+	return p.event.Command
 }
 
 func (p *BotAction) GetServiceName() string {
@@ -102,7 +102,7 @@ func (p *BotAction) GetEnvironment() string {
 func parseArgs(event *slackevents.AppMentionEvent) (*ActionEvent, error) {
 	matches := re.FindStringSubmatch(event.Text)
 	a := &ActionEvent{
-		Name:        matches[2],
+		Command:     matches[2],
 		Service:     matches[3],
 		BuildTag:    matches[4],
 		Environment: matches[5],

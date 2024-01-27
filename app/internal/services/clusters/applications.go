@@ -1,9 +1,13 @@
-package k8s
+package clusters
 
-import "time"
+import (
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters/controller"
+	"time"
+)
 
-type ApplicationStatus struct {
+type Conditions struct {
 	AvailableReplicas int32
+	ServiceStatus     controller.Status
 }
 
 type Application struct {
@@ -14,7 +18,7 @@ type Application struct {
 	Replicas             *int32
 	SelectorMatchLabels  map[string]string
 	Image                string
-	Status               ApplicationStatus
+	Status               Conditions
 	AppliedConfiguration string
 }
 

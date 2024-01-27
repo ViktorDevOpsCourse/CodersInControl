@@ -2,12 +2,12 @@ package jobs
 
 import (
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/actions"
-	"github.com/viktordevopscourse/codersincontrol/app/internal/services/k8s"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters"
 )
 
 type DiffJob struct {
 	botAction  actions.Action
-	k8sService *k8s.K8S
+	k8sService *clusters.K8S
 }
 
 func (d *DiffJob) Launch() {

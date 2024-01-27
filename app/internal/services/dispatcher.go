@@ -1,19 +1,20 @@
 package services
 
 import (
+	"fmt"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/actions"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/jobs"
-	"github.com/viktordevopscourse/codersincontrol/app/internal/services/k8s"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
 )
 
 type JobDispatcher struct {
-	k8sService  *k8s.K8S
+	k8sService  *clusters.K8S
 	jobs        map[string]jobs.Job
 	actionQueue chan actions.Action
 }
 
-func NewJobDispatcher(k8sService *k8s.K8S) JobDispatcher {
+func NewJobDispatcher(k8sService *clusters.K8S) JobDispatcher {
 	return JobDispatcher{
 		k8sService:  k8sService,
 		jobs:        make(map[string]jobs.Job),
@@ -36,7 +37,17 @@ func (d *JobDispatcher) Run() {
 		}
 
 		go func(botAction actions.Action) {
-			j := jobs.NewJob(botAction, d.k8sService)
+			cluster, err := d.k8sService.GetCluster(botAction.GetEnvironment())
+			if err != nil {
+				botAction.ResponseOnAction(fmt.Sprintf("Cluster for env `%s` not found", botAction.GetEnvironment()))
+				return
+			}
+
+			j, err := jobs.NewJob(botAction, cluster)
+			if err != nil {
+				botAction.ResponseOnAction(fmt.Sprintf("Undefined command `%s`", botAction.GetCommand()))
+				return
+			}
 			j.Launch()
 		}(botAction)
 	}

@@ -2,7 +2,7 @@ clusters:
   dev:
     file: "/Users/viktor/.kube/config"
   stage:
-    file: "/Main/config"
+    file: "/Users/viktor/.kube/config"
 
 bot:
   admins:

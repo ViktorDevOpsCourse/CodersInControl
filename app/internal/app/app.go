@@ -5,7 +5,7 @@ import (
 	"github.com/viktordevopscourse/codersincontrol/app/internal/config"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/bot"
-	"github.com/viktordevopscourse/codersincontrol/app/internal/services/k8s"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
 )
 
@@ -15,14 +15,14 @@ func Run(ctx context.Context) error {
 		logger.GetDefaultLogger().Fatalln(err)
 	}
 
-	k8sConfig := k8s.Config{
+	k8sConfig := clusters.Config{
 		Clusters: make(map[string]string),
 	}
 	for environment, clusterOption := range cfg.K8S.Clusters {
 		k8sConfig.Clusters[environment] = clusterOption.File
 	}
 
-	dispatcher := services.NewJobDispatcher(k8s.NewK8SService(k8sConfig))
+	dispatcher := services.NewJobDispatcher(clusters.NewK8SService(k8sConfig))
 	slackBot := bot.NewSlackBot(ctx, bot.SlackOptions{
 		ClientOptions: bot.SlackClientOptions{
 			SlackBotToken: cfg.Bot.SlackBotToken,

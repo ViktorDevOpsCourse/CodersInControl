@@ -1,18 +1,19 @@
-package k8s
+package clusters
 
 import (
+	"fmt"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
 )
 
 type K8S struct {
-	clusters map[string]Cluster // map[namespace]Cluster
+	clusters map[string]*Cluster // map[namespace]Cluster
 }
 
 func NewK8SService(cfg Config) *K8S {
 	log := logger.FromDefaultContext()
 
 	k8s := &K8S{
-		clusters: make(map[string]Cluster),
+		clusters: make(map[string]*Cluster),
 	}
 
 	for envName, kubeConfig := range cfg.Clusters {
@@ -22,6 +23,7 @@ func NewK8SService(cfg Config) *K8S {
 			continue
 		}
 		cluster := NewCluster(client)
+		cluster.Run()
 		k8s.clusters[envName] = cluster
 	}
 
@@ -33,5 +35,9 @@ func NewK8SService(cfg Config) *K8S {
 	return k8s
 }
 
-func (k *K8S) Get() {
+func (k *K8S) GetCluster(env string) (*Cluster, error) {
+	if cluster, ok := k.clusters[env]; ok {
+		return cluster, nil
+	}
+	return nil, fmt.Errorf("cluster for env `%s` not found", env)
 }
