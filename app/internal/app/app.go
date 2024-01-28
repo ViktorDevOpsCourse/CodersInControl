@@ -30,7 +30,7 @@ func Run(ctx context.Context) error {
 			IsDebug:       true,
 		},
 		BotOptions: bot.SlackBotOptions{
-			ActionProcessorQueue: dispatcher.GetActionProcessorQueue(),
+			ActionProcessorQueue: dispatcher.GetActionQueueReceiver(),
 		},
 		AuthOptions: bot.AuthConfig{
 			AllowedUsers: cfg.Bot.Admins,

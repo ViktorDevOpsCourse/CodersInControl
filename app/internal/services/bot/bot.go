@@ -13,19 +13,19 @@ type Bot interface {
 }
 
 type SlackBot struct {
-	ctx         context.Context
-	client      *Client
-	actionQueue chan<- actions.Action
-	auth        *Auth
+	ctx                  context.Context
+	client               *Client
+	actionProcessorQueue chan<- actions.Action
+	auth                 *Auth
 }
 
 func NewSlackBot(ctx context.Context, options SlackOptions) *SlackBot {
 	c := NewClient(ctx, options.ClientOptions)
 	return &SlackBot{
-		ctx:         ctx,
-		client:      c,
-		actionQueue: options.BotOptions.ActionProcessorQueue,
-		auth:        NewAuth(c.api, options.AuthOptions),
+		ctx:                  ctx,
+		client:               c,
+		actionProcessorQueue: options.BotOptions.ActionProcessorQueue,
+		auth:                 NewAuth(c.api, options.AuthOptions),
 	}
 }
 
@@ -112,7 +112,7 @@ func (s *SlackBot) appMentionEventHandler(event *slackevents.AppMentionEvent) {
 		return
 	}
 
-	s.actionQueue <- act
+	s.actionProcessorQueue <- act
 }
 
 func (s *SlackBot) callBackMessage(channel, message, messageTimestamp string) {

@@ -3,10 +3,12 @@ package clusters
 import (
 	"fmt"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
+	"sync"
 )
 
 type K8S struct {
-	clusters map[string]*Cluster // map[namespace]Cluster
+	clusters map[string]*Cluster // map[environment]Cluster
+	sync.RWMutex
 }
 
 func NewK8SService(cfg Config) *K8S {
@@ -33,6 +35,24 @@ func NewK8SService(cfg Config) *K8S {
 	}
 
 	return k8s
+}
+
+func (k *K8S) GetClustersCopy() map[string]Cluster {
+
+	k.RLock()
+	defer k.RUnlock()
+
+	copyClusters := make(map[string]Cluster)
+	for env, cluster := range k.clusters {
+		copyClusters[env] = Cluster{
+			client:       cluster.client,
+			Applications: cluster.Applications,
+			Namespaces:   cluster.Namespaces,
+			Controller:   cluster.Controller,
+		}
+	}
+
+	return copyClusters
 }
 
 func (k *K8S) GetCluster(env string) (*Cluster, error) {

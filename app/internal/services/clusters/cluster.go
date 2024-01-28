@@ -9,10 +9,10 @@ import (
 
 type Cluster struct {
 	client       Client
-	Applications map[string]*Application
-	Namespaces   map[string]*Namespace
-	Controller   *controller.DeploymentsController
-	sync.Mutex
+	Applications map[string]Application
+	Namespaces   map[string]Namespace
+	Controller   controller.Controller
+	sync.RWMutex
 }
 
 func NewCluster(client Client) *Cluster {
@@ -20,11 +20,11 @@ func NewCluster(client Client) *Cluster {
 
 	c := &Cluster{
 		client:       client,
-		Applications: make(map[string]*Application),
-		Namespaces:   make(map[string]*Namespace),
+		Applications: make(map[string]Application),
+		Namespaces:   make(map[string]Namespace),
 	}
 
-	deploymentController, err := controller.NewController(client.http, controller.DeploymentsControllerConfig{
+	deploymentController, err := controller.NewController(client.http, controller.ConfigController{
 		AddFunc:    c.addEventHandler,
 		UpdateFunc: c.updateEventHandler,
 		DeleteFunc: c.deleteEventHandler,
@@ -53,11 +53,11 @@ func (c *Cluster) Stop() {
 	c.Controller.Stop()
 }
 
-func (c *Cluster) GetApplications() map[string]*Application {
+func (c *Cluster) GetApplications() map[string]Application {
 	return c.Applications
 }
 
-func (c *Cluster) GetApplicationByName(name string) *Application {
+func (c *Cluster) GetApplicationByName(name string) Application {
 	return c.Applications[name]
 }
 
@@ -72,11 +72,11 @@ func (c *Cluster) addEventHandler(obj interface{}) {
 	c.Lock()
 	defer c.Unlock()
 
-	c.Namespaces[deployment.Namespace] = &Namespace{
+	c.Namespaces[deployment.Namespace] = Namespace{
 		Name: deployment.Namespace,
 	}
 
-	c.Applications[deployment.GetName()] = &Application{
+	c.Applications[deployment.GetName()] = Application{
 		Name:                 deployment.GetName(),
 		Namespace:            deployment.GetNamespace(),
 		AppliedConfiguration: deployment.Annotations["kubectl.kubernetes.io/last-applied-configuration"],
@@ -119,5 +119,8 @@ func (c *Cluster) updateEventHandler(oldObj, newObj interface{}) {
 
 func (c *Cluster) deleteEventHandler(obj interface{}) {
 	deployment := obj.(*v12.Deployment)
+	c.Lock()
+	defer c.Unlock()
+
 	delete(c.Applications, deployment.GetName())
 }

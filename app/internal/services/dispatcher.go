@@ -1,58 +1,79 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/actions"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/jobs"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
+	"sync"
+	"time"
 )
 
 type JobDispatcher struct {
-	k8sService  *clusters.K8S
-	jobs        map[string]jobs.Job
-	actionQueue chan actions.Action
+	k8sService     *clusters.K8S
+	jobs           sync.Map
+	actionReceiver chan actions.Action
 }
 
 func NewJobDispatcher(k8sService *clusters.K8S) JobDispatcher {
 	return JobDispatcher{
-		k8sService:  k8sService,
-		jobs:        make(map[string]jobs.Job),
-		actionQueue: make(chan actions.Action),
+		k8sService:     k8sService,
+		actionReceiver: make(chan actions.Action),
 	}
 }
 
 func (d *JobDispatcher) Run() {
 	log := logger.FromDefaultContext()
 	for {
-		botAction, ok := <-d.actionQueue
+		botAction, ok := <-d.actionReceiver
 		if !ok {
 			log.Fatal("Job dispatcher someone closed active receiver chanel")
 			return
 		}
 
-		if _, ok := d.jobs[botAction.GetActionID()]; ok {
+		j, err := jobs.NewJob(botAction, d.k8sService.GetClustersCopy())
+		if err != nil {
+			botAction.ResponseOnAction(fmt.Sprintf("Undefined command `%s`. Error %s",
+				botAction.GetRawCommand(), err))
+			return
+		}
+		if d.isJobExist(j.GetId()) {
 			botAction.ResponseOnAction("action already processing, wait please")
-			continue
+			return
 		}
 
-		go func(botAction actions.Action) {
-			cluster, err := d.k8sService.GetCluster(botAction.GetEnvironment())
-			if err != nil {
-				botAction.ResponseOnAction(fmt.Sprintf("Cluster for env `%s` not found", botAction.GetEnvironment()))
-				return
-			}
+		d.proceedJob(j)
 
-			j, err := jobs.NewJob(botAction, cluster)
-			if err != nil {
-				botAction.ResponseOnAction(fmt.Sprintf("Undefined command `%s`", botAction.GetCommand()))
-				return
-			}
-			j.Launch()
-		}(botAction)
 	}
 }
 
-func (d *JobDispatcher) GetActionProcessorQueue() chan actions.Action {
-	return d.actionQueue
+func (d *JobDispatcher) isJobExist(jobId string) bool {
+	_, ok := d.jobs.Load(jobId)
+	if !ok {
+		return false
+	}
+
+	return true
+}
+
+func (d *JobDispatcher) proceedJob(job jobs.Job) {
+	d.jobs.Store(job.GetId(), job)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
+	defer cancel()
+
+	jobDone := make(chan bool)
+	go job.Launch(ctx, jobDone)
+
+	select {
+	case <-ctx.Done():
+		job.ResponseToBot("timeout exceeded")
+	case <-jobDone:
+		d.jobs.Delete(job.GetId())
+	}
+}
+
+func (d *JobDispatcher) GetActionQueueReceiver() chan actions.Action {
+	return d.actionReceiver
 }
