@@ -2,6 +2,7 @@ package clusters
 
 import (
 	"fmt"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/storage"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
 	"sync"
 )
@@ -11,7 +12,9 @@ type K8S struct {
 	sync.RWMutex
 }
 
-func NewK8SService(cfg Config) *K8S {
+func NewK8SService(cfg Config,
+	appsStatesStorage storage.StateRepository,
+	appsEventsStorage storage.EventsRepository) *K8S {
 	log := logger.FromDefaultContext()
 
 	k8s := &K8S{
@@ -24,7 +27,7 @@ func NewK8SService(cfg Config) *K8S {
 			log.Errorf("Failed connection to `%s` cluster. Err `%s`", envName, err)
 			continue
 		}
-		cluster := NewCluster(client)
+		cluster := NewCluster(client, appsStatesStorage, appsEventsStorage)
 		cluster.Run()
 		k8s.clusters[envName] = cluster
 	}

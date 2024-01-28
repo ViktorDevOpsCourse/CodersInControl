@@ -1,13 +1,25 @@
 package clusters
 
 import (
-	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters/controller"
 	"time"
+)
+
+// Status defines the set of statuses a resource can have.
+type Status string
+
+const (
+	InProgressStatus  Status = "InProgress"
+	FailedStatus      Status = "Failed"
+	RunningStatus     Status = "Running"
+	TerminatingStatus Status = "Terminating"
+
+	ConditionStalled     string = "Stalled"
+	ConditionReconciling string = "Reconciling"
 )
 
 type Conditions struct {
 	AvailableReplicas int32
-	ServiceStatus     controller.Status
+	ServiceStatus     Status
 }
 
 type Application struct {

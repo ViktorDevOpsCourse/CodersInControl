@@ -32,7 +32,7 @@ func (l *ListJob) Launch(ctx context.Context, jobDone chan bool) {
 }
 
 func (l *ListJob) GetId() string {
-	return l.botAction.GetRawCommand()
+	return fmt.Sprintf("%s %s", l.botAction.Event.ChannelId, l.botAction.GetRawCommand())
 }
 
 func (l *ListJob) ResponseToBot(message string) {

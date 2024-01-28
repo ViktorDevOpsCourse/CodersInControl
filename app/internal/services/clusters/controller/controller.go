@@ -2,25 +2,10 @@ package controller
 
 import (
 	"fmt"
-	v12 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-)
-
-// Status defines the set of statuses a resource can have.
-type Status string
-
-const (
-	InProgressStatus  Status = "InProgress"
-	FailedStatus      Status = "Failed"
-	RunningStatus     Status = "Running"
-	TerminatingStatus Status = "Terminating"
-
-	ConditionStalled     string = "Stalled"
-	ConditionReconciling string = "Reconciling"
 )
 
 type Controller interface {
@@ -48,102 +33,4 @@ func NewController(k8sClient *kubernetes.Clientset, cfg ConfigController) (Contr
 			fields.Everything()),
 		config: cfg,
 	}, nil
-}
-
-func checkGenericProperties(deployment *v12.Deployment) (Status, error) {
-
-	if !deployment.ObjectMeta.DeletionTimestamp.IsZero() {
-		return TerminatingStatus, nil
-	}
-
-	res, err := checkGeneration(deployment)
-	if res != "" || err != nil {
-		return res, err
-	}
-
-	for _, cond := range deployment.Status.Conditions {
-		if string(cond.Type) == string(ConditionReconciling) && cond.Status == corev1.ConditionTrue {
-			return InProgressStatus, nil
-		}
-		if string(cond.Type) == string(ConditionStalled) && cond.Status == corev1.ConditionTrue {
-			return FailedStatus, nil
-		}
-	}
-
-	return "", nil
-}
-
-func checkGeneration(deployment *v12.Deployment) (Status, error) {
-	if deployment.Status.ObservedGeneration != deployment.ObjectMeta.Generation {
-		return InProgressStatus, nil
-	}
-
-	return "", nil
-}
-
-// deploymentConditions return standardized Conditions for Deployment.
-//
-// For Deployments, we look at .status.conditions as well as the other properties
-// under .status. Status will be Failed if the progress deadline has been exceeded.
-func deploymentConditions(deployment *v12.Deployment) (Status, error) {
-
-	progressing := false
-	available := false
-
-	for _, c := range deployment.Status.Conditions {
-		switch c.Type {
-		case "Progressing": // appsv1.DeploymentProgressing:
-			if c.Reason == "ProgressDeadlineExceeded" {
-				return FailedStatus, nil
-			}
-			if c.Status == corev1.ConditionTrue && c.Reason == "NewReplicaSetAvailable" {
-				progressing = true
-			}
-		case "Available": // appsv1.DeploymentAvailable:
-			if c.Status == corev1.ConditionTrue {
-				available = true
-			}
-		}
-	}
-
-	var specReplicas int32
-	if deployment.Spec.Replicas != nil {
-		specReplicas = *deployment.Spec.Replicas
-	}
-	statusReplicas := deployment.Status.Replicas
-	updatedReplicas := deployment.Status.UpdatedReplicas
-	readyReplicas := deployment.Status.ReadyReplicas
-	availableReplicas := deployment.Status.AvailableReplicas
-
-	if specReplicas > statusReplicas {
-		return InProgressStatus, nil
-	}
-
-	if specReplicas > updatedReplicas {
-		return InProgressStatus, nil
-	}
-
-	if statusReplicas > specReplicas {
-		return InProgressStatus, nil
-	}
-
-	if updatedReplicas > availableReplicas {
-		return InProgressStatus, nil
-	}
-
-	if specReplicas > readyReplicas {
-		return InProgressStatus, nil
-	}
-
-	// check conditions
-	if !progressing {
-		return InProgressStatus, nil
-	}
-
-	if !available {
-		return InProgressStatus, nil
-	}
-
-	// All ok
-	return RunningStatus, nil
 }

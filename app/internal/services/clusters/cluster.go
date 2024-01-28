@@ -1,9 +1,12 @@
 package clusters
 
 import (
+	"fmt"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters/controller"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/storage"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
 	v12 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"sync"
 )
 
@@ -12,16 +15,23 @@ type Cluster struct {
 	Applications map[string]Application
 	Namespaces   map[string]Namespace
 	Controller   controller.Controller
+
+	appsStatesStorage storage.StateRepository
+	appsEventsStorage storage.EventsRepository
 	sync.RWMutex
 }
 
-func NewCluster(client Client) *Cluster {
+func NewCluster(client Client,
+	appsStatesStorage storage.StateRepository,
+	appsEventsStorage storage.EventsRepository) *Cluster {
 	log := logger.FromDefaultContext()
 
 	c := &Cluster{
-		client:       client,
-		Applications: make(map[string]Application),
-		Namespaces:   make(map[string]Namespace),
+		client:            client,
+		Applications:      make(map[string]Application),
+		Namespaces:        make(map[string]Namespace),
+		appsStatesStorage: appsStatesStorage,
+		appsEventsStorage: appsEventsStorage,
 	}
 
 	deploymentController, err := controller.NewController(client.http, controller.ConfigController{
@@ -63,9 +73,10 @@ func (c *Cluster) GetApplicationByName(name string) Application {
 
 func (c *Cluster) addEventHandler(obj interface{}) {
 
+	log := logger.FromDefaultContext()
 	deployment := obj.(*v12.Deployment)
 
-	if _, ok := excludeNamespaces[deployment.Namespace]; ok {
+	if !c.IsWatchedNamespace(deployment.Namespace) {
 		return
 	}
 
@@ -74,6 +85,12 @@ func (c *Cluster) addEventHandler(obj interface{}) {
 
 	c.Namespaces[deployment.Namespace] = Namespace{
 		Name: deployment.Namespace,
+	}
+
+	status, err := c.getDeploymentStatus(deployment)
+	if err != nil {
+		log.Error(err)
+		return
 	}
 
 	c.Applications[deployment.GetName()] = Application{
@@ -87,34 +104,36 @@ func (c *Cluster) addEventHandler(obj interface{}) {
 		Image:                deployment.Spec.Template.Spec.Containers[0].Image, // todo understand how update this field
 		Status: Conditions{
 			AvailableReplicas: deployment.Status.AvailableReplicas,
-			ServiceStatus:     controller.RunningStatus,
+			ServiceStatus:     status,
 		},
 	}
 }
 
 func (c *Cluster) updateEventHandler(oldObj, newObj interface{}) {
-	//log := logger.FromDefaultContext()
-	//
-	//newDeployment := newObj.(*v12.Deployment)
-	//
-	//status, err := checkGenericProperties(newDeployment)
-	//if err != nil {
-	//	log.Errorf("Deployemnt controller, error update event handle `%s`", err)
-	//	return
-	//}
-	//
-	//if status != "" {
-	//	// TODO handel status
-	//	return
-	//}
-	//
-	//status, err = deploymentConditions(newDeployment)
-	//if err != nil {
-	//	log.Errorf("Deployemnt controller, error update event handle `%s`", err)
-	//	return
-	//}
-	//
-	//// TODO handel status
+	log := logger.FromDefaultContext()
+
+	newDeployment := newObj.(*v12.Deployment)
+	oldDeployment := oldObj.(*v12.Deployment)
+
+	if !c.IsWatchedNamespace(newDeployment.Namespace) {
+		return
+	}
+
+	status, err := c.getDeploymentStatus(newDeployment)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	statusO, err := c.getDeploymentStatus(oldDeployment)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	fmt.Println("new", status, newDeployment.Status.Conditions, newDeployment.Spec.Template.Spec.Containers[0].Image)
+	fmt.Println("old", statusO, oldDeployment.Status.Conditions, oldDeployment.Spec.Template.Spec.Containers[0].Image)
+
+	fmt.Printf("\n\n")
 }
 
 func (c *Cluster) deleteEventHandler(obj interface{}) {
@@ -123,4 +142,128 @@ func (c *Cluster) deleteEventHandler(obj interface{}) {
 	defer c.Unlock()
 
 	delete(c.Applications, deployment.GetName())
+}
+
+func (c *Cluster) IsWatchedNamespace(namespace string) bool {
+	if _, ok := excludeNamespaces[namespace]; ok {
+		return false
+	}
+	return true
+}
+
+func (c *Cluster) getDeploymentStatus(deployment *v12.Deployment) (Status, error) {
+	status, err := c.checkGenericProperties(deployment)
+	if err != nil {
+
+		return "", fmt.Errorf("deployemnt controller, error update event handle `%s`", err)
+	}
+
+	if status != "" {
+		return status, nil
+	}
+
+	status, err = c.deploymentConditions(deployment)
+	if err != nil {
+		return "", fmt.Errorf("deployemnt controller, error update event handle `%s`", err)
+	}
+
+	return status, nil
+}
+
+func (c *Cluster) checkGenericProperties(deployment *v12.Deployment) (Status, error) {
+
+	if !deployment.ObjectMeta.DeletionTimestamp.IsZero() {
+		return TerminatingStatus, nil
+	}
+
+	res, err := c.checkGeneration(deployment)
+	if res != "" || err != nil {
+		return res, err
+	}
+
+	for _, cond := range deployment.Status.Conditions {
+		if string(cond.Type) == ConditionReconciling && cond.Status == corev1.ConditionTrue {
+			return InProgressStatus, nil
+		}
+		if string(cond.Type) == ConditionStalled && cond.Status == corev1.ConditionTrue {
+			return FailedStatus, nil
+		}
+	}
+
+	return "", nil
+}
+
+func (c *Cluster) checkGeneration(deployment *v12.Deployment) (Status, error) {
+	if deployment.Status.ObservedGeneration != deployment.ObjectMeta.Generation {
+		return InProgressStatus, nil
+	}
+
+	return "", nil
+}
+
+// deploymentConditions return standardized Conditions for Deployment.
+//
+// For Deployments, we look at .status.conditions as well as the other properties
+// under .status. Status will be Failed if the progress deadline has been exceeded.
+func (c *Cluster) deploymentConditions(deployment *v12.Deployment) (Status, error) {
+
+	progressing := false
+	available := false
+
+	for _, c := range deployment.Status.Conditions {
+		switch c.Type {
+		case "Progressing": // appsv1.DeploymentProgressing:
+			if c.Reason == "ProgressDeadlineExceeded" {
+				return FailedStatus, nil
+			}
+			if c.Status == corev1.ConditionTrue && c.Reason == "NewReplicaSetAvailable" {
+				progressing = true
+			}
+		case "Available": // appsv1.DeploymentAvailable:
+			if c.Status == corev1.ConditionTrue {
+				available = true
+			}
+		}
+	}
+
+	var specReplicas int32
+	if deployment.Spec.Replicas != nil {
+		specReplicas = *deployment.Spec.Replicas
+	}
+	statusReplicas := deployment.Status.Replicas
+	updatedReplicas := deployment.Status.UpdatedReplicas
+	readyReplicas := deployment.Status.ReadyReplicas
+	availableReplicas := deployment.Status.AvailableReplicas
+
+	if specReplicas > statusReplicas {
+		return InProgressStatus, nil
+	}
+
+	if specReplicas > updatedReplicas {
+		return InProgressStatus, nil
+	}
+
+	if statusReplicas > specReplicas {
+		return InProgressStatus, nil
+	}
+
+	if updatedReplicas > availableReplicas {
+		return InProgressStatus, nil
+	}
+
+	if specReplicas > readyReplicas {
+		return InProgressStatus, nil
+	}
+
+	// check conditions
+	if !progressing {
+		return InProgressStatus, nil
+	}
+
+	if !available {
+		return InProgressStatus, nil
+	}
+
+	// All ok
+	return RunningStatus, nil
 }

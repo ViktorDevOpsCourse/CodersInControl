@@ -17,7 +17,7 @@ type ReceivedEvent struct {
 }
 
 type BotAction struct {
-	event            *ReceivedEvent
+	Event            *ReceivedEvent
 	callbackResponse func(channel, message, messageTimestamp string)
 }
 
@@ -31,25 +31,25 @@ func NewAction(event *slackevents.AppMentionEvent, callback func(channel, messag
 	actionEvent.rawEvent = event
 
 	return &BotAction{
-		event:            actionEvent,
+		Event:            actionEvent,
 		callbackResponse: callback,
 	}, nil
 }
 
 func (p *BotAction) ResponseOnAction(message string) {
-	p.callbackResponse(p.event.rawEvent.Channel, message, p.event.rawEvent.ThreadTimeStamp)
+	p.callbackResponse(p.Event.rawEvent.Channel, message, p.Event.rawEvent.ThreadTimeStamp)
 }
 
 func (p *BotAction) GetCommand() string {
-	return p.event.Command
+	return p.Event.Command
 }
 
 func (p *BotAction) GetCommandArgs() string {
-	return p.event.RawArgs
+	return p.Event.RawArgs
 }
 
 func (p *BotAction) GetRawCommand() string {
-	return fmt.Sprintf("%s %s", p.event.Command, p.event.RawArgs)
+	return fmt.Sprintf("%s %s", p.Event.Command, p.Event.RawArgs)
 }
 
 func parseArgs(event *slackevents.AppMentionEvent) (*ReceivedEvent, error) {

@@ -4,7 +4,6 @@ import (
 	v12 "k8s.io/api/apps/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	"time"
 )
 
 type DeploymentsController struct {
@@ -19,7 +18,7 @@ func (d *DeploymentsController) Run() error {
 	informer := cache.NewSharedIndexInformer(
 		d.watchList,
 		&v12.Deployment{},
-		time.Second*5,
+		0, // do not sync
 		cache.Indexers{},
 	)
 

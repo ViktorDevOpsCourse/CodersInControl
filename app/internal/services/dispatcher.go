@@ -6,21 +6,28 @@ import (
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/actions"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/jobs"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/storage"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
 	"sync"
 	"time"
 )
 
 type JobDispatcher struct {
-	k8sService     *clusters.K8S
-	jobs           sync.Map
-	actionReceiver chan *actions.BotAction
+	k8sService        *clusters.K8S
+	jobs              sync.Map
+	actionReceiver    chan *actions.BotAction
+	appsStatesStorage storage.StateRepository
+	appsEventsStorage storage.EventsRepository
 }
 
-func NewJobDispatcher(k8sService *clusters.K8S) JobDispatcher {
+func NewJobDispatcher(k8sService *clusters.K8S,
+	appsStatesStorage storage.StateRepository,
+	appsEventsStorage storage.EventsRepository) JobDispatcher {
 	return JobDispatcher{
-		k8sService:     k8sService,
-		actionReceiver: make(chan *actions.BotAction),
+		k8sService:        k8sService,
+		actionReceiver:    make(chan *actions.BotAction),
+		appsStatesStorage: appsStatesStorage,
+		appsEventsStorage: appsEventsStorage,
 	}
 }
 
@@ -40,6 +47,7 @@ func (d *JobDispatcher) Run() {
 				botAction.GetRawCommand(), err))
 			continue
 		}
+
 		if d.isJobExist(j.GetId()) {
 			botAction.ResponseOnAction("action already processing, wait please")
 			continue
@@ -60,6 +68,8 @@ func (d *JobDispatcher) isJobExist(jobId string) bool {
 }
 
 func (d *JobDispatcher) proceedJob(job jobs.Job) {
+	log := logger.FromDefaultContext()
+
 	d.jobs.Store(job.GetId(), job)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
 	defer cancel()
@@ -67,14 +77,20 @@ func (d *JobDispatcher) proceedJob(job jobs.Job) {
 	jobDone := make(chan bool)
 	go job.Launch(ctx, jobDone)
 
+	defer d.jobs.Delete(job.GetId())
+
 	select {
 	case <-ctx.Done():
 		job.ResponseToBot("timeout exceeded")
 	case <-jobDone:
-		d.jobs.Delete(job.GetId())
+		log.Info("job %s done", job.GetId())
 	}
 }
 
 func (d *JobDispatcher) GetActionQueueReceiver() chan *actions.BotAction {
+	return d.actionReceiver
+}
+
+func (d *JobDispatcher) Register() chan *actions.BotAction {
 	return d.actionReceiver
 }

@@ -21,35 +21,24 @@ func (d *DiffJob) Launch(ctx context.Context, jobDone chan bool) {
 			continue
 		}
 
-		message = fmt.Sprintf("%s\n\ndiff from: `%s`\n\n", message, env)
+		message = fmt.Sprintf("%s\n\ndifference between: `%s` and `%s` \n\n", message, d.currentEnv, env)
 		for name, app := range cluster.Applications {
 
-			isFoundDisagreements := false
 			select {
 			case <-ctx.Done():
 				return
 			default:
+				currentApp := currentApps[name]
+
 				// check if found same app on other env
-				if currentApps[name].Name == "" {
+				if currentApp.Name == "" {
 					continue
 				}
 
-				if *currentApps[name].Replicas != *app.Replicas {
-					isFoundDisagreements = true
-					message = fmt.Sprintf("%s *%s* ```%s replicas - %d \n%s replicas - %d```",
-						message, name, d.currentEnv, currentApps[name].Replicas, env, app.Replicas)
-				}
+				differenceMessage := d.compareApps(currentApp, app, env)
 
-				if currentApps[name].Image != app.Image {
-					isFoundDisagreements = true
-					message = fmt.Sprintf("%s *%s* ```%s image - %s \n%s image - %s```",
-						message, name, d.currentEnv, currentApps[name].Image, env, app.Image)
-				}
-
-				if !isFoundDisagreements {
-					message = fmt.Sprintf("%s *%s* ```%s and %s same```",
-						message, name, d.currentEnv, env)
-				}
+				message = fmt.Sprintf("%s app: *%s* ```%s```",
+					message, name, differenceMessage)
 			}
 		}
 	}
@@ -59,9 +48,34 @@ func (d *DiffJob) Launch(ctx context.Context, jobDone chan bool) {
 }
 
 func (d *DiffJob) GetId() string {
-	return d.botAction.GetRawCommand()
+	return fmt.Sprintf("%s %s", d.botAction.Event.ChannelId, d.botAction.GetRawCommand())
 }
 
 func (d *DiffJob) ResponseToBot(message string) {
 	d.botAction.ResponseOnAction(message)
+}
+
+func (d *DiffJob) compareApps(currentApp, otherApp clusters.Application, otherEnv string) string {
+	compareMessage := ""
+	isFoundDisagreements := false
+
+	if currentApp.Replicas != nil && otherApp.Replicas != nil {
+		if *currentApp.Replicas != *otherApp.Replicas {
+			isFoundDisagreements = true
+			compareMessage = fmt.Sprintf("%s%s replicas - %d \n%s replicas - %d\n",
+				compareMessage, d.currentEnv, *currentApp.Replicas, otherEnv, *otherApp.Replicas)
+		}
+	}
+
+	if currentApp.Image != otherApp.Image {
+		isFoundDisagreements = true
+		compareMessage = fmt.Sprintf("%s%s image - %s \n%s image - %s\n",
+			compareMessage, d.currentEnv, currentApp.Image, otherEnv, otherApp.Image)
+	}
+
+	if !isFoundDisagreements {
+		compareMessage = fmt.Sprintf("%s and %s same", d.currentEnv, otherEnv)
+	}
+
+	return compareMessage
 }

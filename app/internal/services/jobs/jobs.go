@@ -17,7 +17,7 @@ const (
 type Job interface {
 	GetId() string
 	Launch(context.Context, chan bool)
-	ResponseToBot(message string)
+	ResponseToBot(string)
 }
 
 func NewJob(botAction *actions.BotAction, clusters map[string]clusters.Cluster) (Job, error) {
@@ -39,9 +39,10 @@ func NewJob(botAction *actions.BotAction, clusters map[string]clusters.Cluster) 
 			currentEnv: botAction.GetCommandArgs(),
 		}, nil
 	case JobPromote:
+		//TODO pars raw command args
 		return &PromoteJob{
 			botAction: botAction,
-			//cluster:   clusters,
+			cluster:   clusters,
 		}, nil
 	case JobRollBack:
 	}
