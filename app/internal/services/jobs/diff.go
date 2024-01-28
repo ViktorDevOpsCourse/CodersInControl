@@ -36,19 +36,19 @@ func (d *DiffJob) Launch(ctx context.Context, jobDone chan bool) {
 
 				if *currentApps[name].Replicas != *app.Replicas {
 					isFoundDisagreements = true
-					message = fmt.Sprintf("%s *%s* ```current replicas - %d \n%s replicas - %d```",
-						message, name, currentApps[name].Replicas, env, app.Replicas)
+					message = fmt.Sprintf("%s *%s* ```%s replicas - %d \n%s replicas - %d```",
+						message, name, d.currentEnv, currentApps[name].Replicas, env, app.Replicas)
 				}
 
 				if currentApps[name].Image != app.Image {
 					isFoundDisagreements = true
-					message = fmt.Sprintf("%s *%s* ```current image - %d \n%s image - %d```",
-						message, name, currentApps[name].Replicas, env, app.Replicas)
+					message = fmt.Sprintf("%s *%s* ```%s image - %s \n%s image - %s```",
+						message, name, d.currentEnv, currentApps[name].Image, env, app.Image)
 				}
 
 				if !isFoundDisagreements {
-					message = fmt.Sprintf("%s *%s* ```current and %s same```",
-						message, name, env)
+					message = fmt.Sprintf("%s *%s* ```%s and %s same```",
+						message, name, d.currentEnv, env)
 				}
 			}
 		}

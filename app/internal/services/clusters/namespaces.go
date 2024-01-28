@@ -1,5 +1,6 @@
 package clusters
 
+// TODO move it to config file
 var excludeNamespaces = map[string]struct{}{
 	"flux-system":     struct{}{},
 	"kube-system":     struct{}{},
