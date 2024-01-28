@@ -4,7 +4,7 @@ For this example we assume a scenario with two clusters: staging and production.
 The end goal is to leverage Flux and Kustomize to manage both clusters while minimizing duplicated declarations.
 
 We will configure Flux to install, test and upgrade a demo app Podinfo using `HelmRepository` and `HelmRelease` custom resources.
-??? Flux will monitor the Helm repository, and it will automatically upgrade the Helm releases to their latest chart version based on semver ranges.
+Flux will monitor the Helm repository, and it will automatically upgrade the Helm releases to their latest chart version based on [semver](https://semver.org/) ranges.
 
 On each cluster, we will install [Weave GitOps](https://docs.gitops.weave.works/) (the OSS UI for Flux) to visualize and monitor the workloads managed by Flux.
 
@@ -21,6 +21,8 @@ brew install fluxcd/tap/flux
 ```
 
 ## Repository structure
+
+![Repository structure](./assets/structure.png)
 
 The Git repository contains the following top directories:
 
