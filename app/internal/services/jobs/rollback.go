@@ -6,7 +6,7 @@ import (
 )
 
 type RollbackJob struct {
-	botAction  actions.Action
+	botAction  *actions.BotAction
 	k8sService *clusters.K8S
 }
 

@@ -8,7 +8,7 @@ import (
 )
 
 type PromoteJob struct {
-	botAction actions.Action
+	botAction *actions.BotAction
 	cluster   *clusters.Cluster
 }
 

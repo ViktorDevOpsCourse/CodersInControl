@@ -12,7 +12,7 @@ type SlackOptions struct {
 }
 
 type SlackBotOptions struct {
-	ActionProcessorQueue chan actions.Action
+	ActionProcessorQueue chan *actions.BotAction
 }
 
 type SlackClientOptions struct {

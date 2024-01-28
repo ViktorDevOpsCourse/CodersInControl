@@ -15,7 +15,7 @@ type Bot interface {
 type SlackBot struct {
 	ctx                  context.Context
 	client               *Client
-	actionProcessorQueue chan<- actions.Action
+	actionProcessorQueue chan<- *actions.BotAction
 	auth                 *Auth
 }
 

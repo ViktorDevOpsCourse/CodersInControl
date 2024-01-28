@@ -8,7 +8,7 @@ import (
 )
 
 type DiffJob struct {
-	botAction  actions.Action
+	botAction  *actions.BotAction
 	clusters   map[string]clusters.Cluster
 	currentEnv string
 }

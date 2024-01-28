@@ -14,16 +14,17 @@ import (
 type JobDispatcher struct {
 	k8sService     *clusters.K8S
 	jobs           sync.Map
-	actionReceiver chan actions.Action
+	actionReceiver chan *actions.BotAction
 }
 
 func NewJobDispatcher(k8sService *clusters.K8S) JobDispatcher {
 	return JobDispatcher{
 		k8sService:     k8sService,
-		actionReceiver: make(chan actions.Action),
+		actionReceiver: make(chan *actions.BotAction),
 	}
 }
 
+// Run launch dispatch jobs. Blocked operation
 func (d *JobDispatcher) Run() {
 	log := logger.FromDefaultContext()
 	for {
@@ -37,11 +38,11 @@ func (d *JobDispatcher) Run() {
 		if err != nil {
 			botAction.ResponseOnAction(fmt.Sprintf("Undefined command `%s`. Error %s",
 				botAction.GetRawCommand(), err))
-			return
+			continue
 		}
 		if d.isJobExist(j.GetId()) {
 			botAction.ResponseOnAction("action already processing, wait please")
-			return
+			continue
 		}
 
 		d.proceedJob(j)
@@ -74,6 +75,6 @@ func (d *JobDispatcher) proceedJob(job jobs.Job) {
 	}
 }
 
-func (d *JobDispatcher) GetActionQueueReceiver() chan actions.Action {
+func (d *JobDispatcher) GetActionQueueReceiver() chan *actions.BotAction {
 	return d.actionReceiver
 }

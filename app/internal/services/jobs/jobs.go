@@ -20,7 +20,7 @@ type Job interface {
 	ResponseToBot(message string)
 }
 
-func NewJob(botAction actions.Action, clusters map[string]clusters.Cluster) (Job, error) {
+func NewJob(botAction *actions.BotAction, clusters map[string]clusters.Cluster) (Job, error) {
 
 	switch botAction.GetCommand() {
 	case jobList:

@@ -7,23 +7,21 @@ import (
 	"strings"
 )
 
-// TODO read from config command and envs
 var re = regexp.MustCompile(`^\<\@(?P<botUserId>\w*)\>\s+(?P<Command>\w+)(?P<RawArgs>\s+.*)?$`)
 
-type Action interface {
-	GetCommand() string
-	GetCommandArgs() string
-	GetRawCommand() string
-	ResponseOnAction(message string)
+type ReceivedEvent struct {
+	Command   string
+	RawArgs   string
+	ChannelId string
+	rawEvent  *slackevents.AppMentionEvent
 }
 
-type ActionEvent struct {
-	Command  string
-	RawArgs  string
-	rawEvent *slackevents.AppMentionEvent
+type BotAction struct {
+	event            *ReceivedEvent
+	callbackResponse func(channel, message, messageTimestamp string)
 }
 
-func NewAction(event *slackevents.AppMentionEvent, callback func(channel, message, messageTimestamp string)) (Action, error) {
+func NewAction(event *slackevents.AppMentionEvent, callback func(channel, message, messageTimestamp string)) (*BotAction, error) {
 	actionEvent, err := parseArgs(event)
 	if err != nil {
 		callback(event.Channel, err.Error(), event.ThreadTimeStamp)
@@ -32,19 +30,10 @@ func NewAction(event *slackevents.AppMentionEvent, callback func(channel, messag
 
 	actionEvent.rawEvent = event
 
-	return createAction(actionEvent, callback), nil
-}
-
-type BotAction struct {
-	event            *ActionEvent
-	callbackResponse func(channel, message, messageTimestamp string)
-}
-
-func createAction(event *ActionEvent, callback func(channel, message, messageTimestamp string)) Action {
 	return &BotAction{
-		event:            event,
+		event:            actionEvent,
 		callbackResponse: callback,
-	}
+	}, nil
 }
 
 func (p *BotAction) ResponseOnAction(message string) {
@@ -63,7 +52,7 @@ func (p *BotAction) GetRawCommand() string {
 	return fmt.Sprintf("%s %s", p.event.Command, p.event.RawArgs)
 }
 
-func parseArgs(event *slackevents.AppMentionEvent) (*ActionEvent, error) {
+func parseArgs(event *slackevents.AppMentionEvent) (*ReceivedEvent, error) {
 	match := re.FindStringSubmatch(event.Text)
 	result := map[string]string{}
 	for keyIndex, value := range match {
@@ -71,9 +60,10 @@ func parseArgs(event *slackevents.AppMentionEvent) (*ActionEvent, error) {
 			result[re.SubexpNames()[keyIndex]] = strings.TrimSpace(value)
 		}
 	}
-	a := &ActionEvent{
-		Command: result["Command"],
-		RawArgs: result["RawArgs"],
+	a := &ReceivedEvent{
+		Command:   result["Command"],
+		RawArgs:   result["RawArgs"],
+		ChannelId: event.Channel,
 	}
 	return a, nil
 }
