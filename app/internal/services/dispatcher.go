@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
-	"github.com/viktordevopscourse/codersincontrol/app/internal/services/actions"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/bot"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/jobs"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/storage"
@@ -15,7 +15,7 @@ import (
 type JobDispatcher struct {
 	k8sService        *clusters.K8S
 	jobs              sync.Map
-	actionReceiver    chan *actions.BotAction
+	actionReceiver    chan *bot.BotAction
 	appsStatesStorage storage.StateRepository
 	appsEventsStorage storage.EventsRepository
 }
@@ -25,7 +25,7 @@ func NewJobDispatcher(k8sService *clusters.K8S,
 	appsEventsStorage storage.EventsRepository) JobDispatcher {
 	return JobDispatcher{
 		k8sService:        k8sService,
-		actionReceiver:    make(chan *actions.BotAction),
+		actionReceiver:    make(chan *bot.BotAction),
 		appsStatesStorage: appsStatesStorage,
 		appsEventsStorage: appsEventsStorage,
 	}
@@ -87,10 +87,10 @@ func (d *JobDispatcher) proceedJob(job jobs.Job) {
 	}
 }
 
-func (d *JobDispatcher) GetActionQueueReceiver() chan *actions.BotAction {
+func (d *JobDispatcher) GetActionQueueReceiver() chan *bot.BotAction {
 	return d.actionReceiver
 }
 
-func (d *JobDispatcher) Register() chan *actions.BotAction {
+func (d *JobDispatcher) Register() chan *bot.BotAction {
 	return d.actionReceiver
 }

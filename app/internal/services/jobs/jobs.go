@@ -3,7 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
-	"github.com/viktordevopscourse/codersincontrol/app/internal/services/actions"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/bot"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters"
 )
 
@@ -20,7 +20,7 @@ type Job interface {
 	ResponseToBot(string)
 }
 
-func NewJob(botAction *actions.BotAction, clusters map[string]clusters.Cluster) (Job, error) {
+func NewJob(botAction *bot.BotAction, clusters map[string]clusters.Cluster) (Job, error) {
 
 	switch botAction.GetCommand() {
 	case jobList:

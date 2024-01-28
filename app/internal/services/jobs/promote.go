@@ -2,12 +2,12 @@ package jobs
 
 import (
 	"context"
-	"github.com/viktordevopscourse/codersincontrol/app/internal/services/actions"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/bot"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters"
 )
 
 type PromoteJob struct {
-	botAction   *actions.BotAction
+	botAction   *bot.BotAction
 	AppName     string
 	BuildTag    string
 	Environment string

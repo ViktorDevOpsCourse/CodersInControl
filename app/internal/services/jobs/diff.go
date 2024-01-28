@@ -3,12 +3,12 @@ package jobs
 import (
 	"context"
 	"fmt"
-	"github.com/viktordevopscourse/codersincontrol/app/internal/services/actions"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/bot"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters"
 )
 
 type DiffJob struct {
-	botAction  *actions.BotAction
+	botAction  *bot.BotAction
 	clusters   map[string]clusters.Cluster
 	currentEnv string
 }

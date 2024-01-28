@@ -1,12 +1,12 @@
 package jobs
 
 import (
-	"github.com/viktordevopscourse/codersincontrol/app/internal/services/actions"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/bot"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters"
 )
 
 type RollbackJob struct {
-	botAction  *actions.BotAction
+	botAction  *bot.BotAction
 	k8sService *clusters.K8S
 }
 

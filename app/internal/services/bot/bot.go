@@ -5,7 +5,6 @@ import (
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/slackevents"
 	"github.com/slack-go/slack/socketmode"
-	"github.com/viktordevopscourse/codersincontrol/app/internal/services/actions"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
 )
 
@@ -15,7 +14,7 @@ type Bot interface {
 type SlackBot struct {
 	ctx                  context.Context
 	client               *Client
-	actionProcessorQueue chan<- *actions.BotAction
+	actionProcessorQueue chan<- *BotAction
 	auth                 *Auth
 }
 
@@ -106,7 +105,7 @@ func (s *SlackBot) appMentionEventHandler(event *slackevents.AppMentionEvent) {
 		return
 	}
 
-	act, err := actions.NewAction(event, s.callBackMessage)
+	act, err := NewAction(event, s.callBackMessage)
 	if err != nil {
 		log.Errorf("Failed create action `%s`", err)
 		return
