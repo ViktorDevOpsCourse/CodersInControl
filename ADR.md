@@ -23,12 +23,12 @@ Choosing the deployment strategy for managing application versions across differ
 
 ### Decision
 
-Utilizing separate Kubernetes clusters for each environment is chosen to ensure clear separation and isolation. Each cluster corresponds to a specific environment, allowing for independent development, testing, staging, and production deployment processes.
+Using separate Kubernetes clusters for each environment is chosen to ensure clear separation and isolation. Each cluster corresponds to a specific environment, allowing for independent development, testing, staging, and production deployment processes.
 
 ### Consequences
 
 - Clear environment separation minimizes the risk of errors and ensures a consistent deployment process.
-- Isolation of environments enhances security and stability, providing a controlled and controlled environment for each stage of development.
+- Isolation of environments enhances security and stability, providing a controlled environment for each stage of development.
 
 ## ADR 3: Adoption of FluxCD for GitOps Implementation
 
@@ -60,7 +60,7 @@ The Helm OCI Registry is adopted as a centralized repository for Helm charts. Th
 - Centralized storage of Helm charts in the Helm OCI Registry streamlines versioning and deployment processes.
 - Helm charts in the registry enhance reproducibility and stability in deploying applications across different environments.
 
-## ADR 5: Utilization of Slack for User Interaction and Feedback
+## ADR 5: Using of Slack for User Interaction and Feedback
 
 ### Context
 
