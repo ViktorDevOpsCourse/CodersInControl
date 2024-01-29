@@ -26,6 +26,8 @@ The Slack Bot is designed to facilitate the version control and deployment proce
 
 ## Interaction Flow
 
+![General schema](./assets/general_shema.png)
+
 1. User Commands in Slack
 
 2. Slack Bot Processing
