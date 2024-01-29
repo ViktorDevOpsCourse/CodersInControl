@@ -14,6 +14,7 @@ On each cluster, we will install [Weave GitOps](https://docs.gitops.weave.works/
 - [Repository structure](#repository-structure)
   - [Applications](#applications)
   - [Infrastructure](#infrastructure)
+- [Bootstrap staging and production](#bootstrap-staging-and-production)
 
 ## Prerequisites
 
@@ -134,6 +135,6 @@ Note that on production systems it is recommended to expose Weave GitOps over TL
 to enable OIDC authentication for your organisation members.
 To configure OIDC with Dex and GitHub please see this [guide](https://docs.gitops.weave.works/docs/guides/setting-up-dex/).
 
-## Add clusters
+## Add environment
 
-**Not working yet!** If you want to add a cluster to your fleet, execute `make add-cluster`.
+**Not working yet!** If you want to add a cluster to your fleet, execute `make add`.
