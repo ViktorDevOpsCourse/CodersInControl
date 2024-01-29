@@ -42,7 +42,7 @@ func (s *ApplicationsStates) GetLastApplied(appName string) (State, error) {
 
 func (s *ApplicationsStates) Save(appName string, state State) error {
 	s.Lock()
-	defer s.RUnlock()
+	defer s.Unlock()
 
 	if _, ok := s.applications[appName]; !ok {
 		stack := &Stack{

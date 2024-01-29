@@ -18,11 +18,18 @@ type PromoteJob struct {
 	BuildTag          string
 	Environment       string
 	appsEventsStorage storage.EventsRepository
-	cluster           map[string]clusters.Cluster
+	clusters          map[string]clusters.Cluster
 }
 
 func (p *PromoteJob) Launch(ctx context.Context, jobDone chan bool) {
 	log := logger.FromContext(ctx)
+	p.ResponseToBot(fmt.Sprintf("image: `%s` promoting :runner:", p.BuildTag))
+
+	if strings.Contains(p.clusters[p.Environment].Applications[p.AppName].Image, p.BuildTag) {
+		p.ResponseToBot(fmt.Sprintf("image: `%s` already promoted on %s", p.BuildTag, p.Environment))
+		jobDone <- true
+		return
+	}
 	// TODO send request to git
 
 	// TODO watch version
@@ -33,15 +40,19 @@ func (p *PromoteJob) Launch(ctx context.Context, jobDone chan bool) {
 	for {
 		select {
 		case <-ticker.C:
-			appEvent, err := p.appsEventsStorage.Get(p.Environment, p.AppName)
+
+			log.Infof("check promote finished events for %s in %s", p.AppName, p.Environment)
+			appEvent, err := p.appsEventsStorage.GetAndRemove(p.Environment, p.AppName)
 			if err != nil {
 				if errors.Is(err, storage.NotFoundError) {
 					continue
 				}
 				log.Errorf("Promote Job app `%s`. failed get app event from storage. Err `%s`", p.AppName, err)
 			}
+
 			if strings.Contains(appEvent.Image, p.BuildTag) {
-				p.ResponseToBot(fmt.Sprintf("App *%s* image: `%s` promoted on %s :tada:", p.AppName, p.BuildTag, p.Environment))
+				log.Infof("find promote finished event for %s in %s", p.AppName, p.Environment)
+				p.ResponseToBot(fmt.Sprintf("image: `%s` promoted on %s :tada:", p.BuildTag, p.Environment))
 				jobDone <- true
 				return
 			}
@@ -54,7 +65,7 @@ func (p *PromoteJob) Launch(ctx context.Context, jobDone chan bool) {
 }
 
 func (p *PromoteJob) GetId() string {
-	return p.botAction.GetRawCommand()
+	return fmt.Sprintf("%s%s%s", p.botAction.GetCommand(), p.AppName, p.Environment)
 }
 
 func (p *PromoteJob) ResponseToBot(message string) {

@@ -1,6 +1,6 @@
 clusters:
-  dev:
-    file: "/Users/viktor/.kube/config"
+#  dev:
+#    file: "/Users/viktor/.kube/config"
   stage:
     file: "/Users/viktor/.kube/config"
 

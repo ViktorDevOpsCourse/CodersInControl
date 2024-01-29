@@ -12,11 +12,12 @@ import (
 )
 
 type Cluster struct {
-	client          Client
-	Applications    map[string]Application
-	Namespaces      map[string]Namespace
-	Controller      controller.Controller
-	EnvironmentName string
+	client                 Client
+	Applications           map[string]Application // map[appName]
+	Namespaces             map[string]Namespace   // map[nsName]
+	Controller             controller.Controller
+	EnvironmentName        string
+	lastAppResourceVersion map[string]string // map[appName]revision
 
 	appsStatesStorage storage.StateRepository
 	appsEventsStorage storage.EventsRepository
@@ -30,12 +31,13 @@ func NewCluster(envName string,
 	log := logger.FromDefaultContext()
 
 	c := &Cluster{
-		client:            client,
-		Applications:      make(map[string]Application),
-		Namespaces:        make(map[string]Namespace),
-		EnvironmentName:   envName,
-		appsStatesStorage: appsStatesStorage,
-		appsEventsStorage: appsEventsStorage,
+		client:                 client,
+		Applications:           make(map[string]Application),
+		Namespaces:             make(map[string]Namespace),
+		EnvironmentName:        envName,
+		appsStatesStorage:      appsStatesStorage,
+		appsEventsStorage:      appsEventsStorage,
+		lastAppResourceVersion: make(map[string]string),
 	}
 
 	deploymentController, err := controller.NewController(client.http, controller.ConfigController{
@@ -124,11 +126,21 @@ func (c *Cluster) updateEventHandler(oldObj, newObj interface{}) {
 		image = newDeployment.Spec.Template.Spec.Containers[0].Image
 	}
 
+	if prevVersion, ok := c.lastAppResourceVersion[newDeployment.GetName()]; ok {
+		if prevVersion == newDeployment.ResourceVersion {
+			log.Infof("updateEventHandler ResourceVersion for status %s same. Skip", newDeployment.ResourceVersion)
+			return
+		}
+	}
+
+	c.lastAppResourceVersion[newDeployment.GetName()] = newDeployment.ResourceVersion
+
 	err = c.appsEventsStorage.Save(c.EnvironmentName, newDeployment.GetName(), storage.ApplicationEvent{
-		AppName:   newDeployment.GetName(),
-		Image:     image,
-		EventTime: time.Now(),
-		Status:    string(status),
+		AppName:         newDeployment.GetName(),
+		Image:           image,
+		EventTime:       time.Now(),
+		Status:          string(status),
+		ResourceVersion: newDeployment.ResourceVersion,
 	})
 	if err != nil {
 		log.Error(err)

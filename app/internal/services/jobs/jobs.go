@@ -52,7 +52,7 @@ func NewJob(botAction *bot.BotAction,
 			BuildTag:          matches[2],
 			Environment:       matches[3],
 			botAction:         botAction,
-			cluster:           clusters,
+			clusters:          clusters,
 			appsEventsStorage: appsEventsStorage,
 		}, nil
 	case JobRollBack:

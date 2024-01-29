@@ -6,20 +6,21 @@ import (
 )
 
 type EventsRepository interface {
-	Get(envName, appName string) (ApplicationEvent, error)
+	GetAndRemove(envName, appName string) (ApplicationEvent, error)
 	Save(envName, appName string, event ApplicationEvent) error
 }
 
 type ApplicationEvent struct {
-	AppName   string
-	Image     string
-	EventTime time.Time
-	Status    string
+	AppName         string
+	Image           string
+	ResourceVersion string
+	EventTime       time.Time
+	Status          string
 }
 
 type ApplicationsEvents struct {
 	events map[string]map[string]ApplicationEvent // map[envName]map[appName]ApplicationData
-	sync.RWMutex
+	sync.Mutex
 }
 
 func NewApplicationsEvents() EventsRepository {
@@ -28,9 +29,9 @@ func NewApplicationsEvents() EventsRepository {
 	}
 }
 
-func (e *ApplicationsEvents) Get(envName, appName string) (ApplicationEvent, error) {
-	e.RLock()
-	defer e.RUnlock()
+func (e *ApplicationsEvents) GetAndRemove(envName, appName string) (ApplicationEvent, error) {
+	e.Lock()
+	defer e.Unlock()
 
 	if _, ok := e.events[envName]; !ok {
 		return ApplicationEvent{}, NotFoundError

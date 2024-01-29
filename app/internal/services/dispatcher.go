@@ -83,7 +83,7 @@ func (d *JobDispatcher) proceedJob(job jobs.Job) {
 	case <-ctx.Done():
 		job.ResponseToBot("timeout exceeded")
 	case <-jobDone:
-		log.Info("job %s done", job.GetId())
+		log.Infof("job %s done", job.GetId())
 	}
 }
 
