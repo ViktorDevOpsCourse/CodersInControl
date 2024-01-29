@@ -8,6 +8,13 @@ Flux will monitor the Helm repository, and it will automatically upgrade the Hel
 
 On each cluster, we will install [Weave GitOps](https://docs.gitops.weave.works/) (the OSS UI for Flux) to visualize and monitor the workloads managed by Flux.
 
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Repository structure](#repository-structure)
+  - [Applications](#applications)
+  - [Infrastructure](#infrastructure)
+
 ## Prerequisites
 
 You will need a Kubernetes cluster version 1.21 or newer.
@@ -91,18 +98,6 @@ The infrastructure is structured into:
 ```
 
 ## Bootstrap staging and production
-
-The clusters dir contains the Flux configuration:
-
-```
-./clusters/
-├── prod
-│   ├── apps.yaml
-│   └── infrastructure.yaml
-└── stag
-    ├── apps.yaml
-    └── infrastructure.yaml
-```
 
 Export your GitHub access token, username and repo name:
 
