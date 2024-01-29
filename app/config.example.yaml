@@ -7,3 +7,8 @@ clusters:
 bot:
   admins:
     - "viktorzhabskiy"
+
+repo:
+  owner: "ViktorDevOpsCourse"
+  name: "flux-image-updates"
+  branch: "main"

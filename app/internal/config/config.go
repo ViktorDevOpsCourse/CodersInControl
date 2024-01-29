@@ -15,12 +15,20 @@ var AppVersion = "unknown version"
 type Config struct {
 	Bot                   BotConfig
 	K8S                   K8SConfig
+	Github                GitHubConfig
 	ServiceConfigFilePath string `conf:"env:SERVICE_CONFIG_FILE_PATH"`
 }
 
 type FileConfig struct {
 	Clusters map[string]Cluster `yaml:"clusters"`
-	Bot      Bot                `yaml:"bot"`
+	Bot      struct {
+		Admins []string `yaml:"admins"`
+	} `yaml:"bot"`
+	Repo struct {
+		Owner  string `yaml:"owner"`
+		Name   string `yaml:"name"`
+		Branch string `yaml:"branch"`
+	}
 }
 type Cluster struct {
 	File string `yaml:"file"`
@@ -30,14 +38,17 @@ type K8SConfig struct {
 	Clusters map[string]Cluster
 }
 
-type Bot struct {
-	Admins []string `yaml:"admins"`
-}
-
 type BotConfig struct {
 	Admins        map[string]struct{}
 	SlackBotToken string `conf:"env:SLACK_BOT_TOKEN"`
 	SlackAppToken string `conf:"env:SLACK_APP_TOKEN"`
+}
+
+type GitHubConfig struct {
+	Token      string `conf:"env:GITHUB_API_TOKEN"`
+	RepoOwner  string
+	RepoName   string
+	RepoBranch string
 }
 
 func ParseAppConfig(version string) (Config, error) {
@@ -84,6 +95,10 @@ func ParseAppConfig(version string) (Config, error) {
 	cfg.K8S = K8SConfig{
 		Clusters: fc.Clusters,
 	}
+
+	cfg.Github.RepoOwner = fc.Repo.Owner
+	cfg.Github.RepoName = fc.Repo.Name
+	cfg.Github.RepoBranch = fc.Repo.Branch
 
 	for _, admin := range fc.Bot.Admins {
 		cfg.Bot.Admins[admin] = struct{}{}

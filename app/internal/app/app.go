@@ -6,6 +6,7 @@ import (
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/bot"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/delivery"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/storage"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
 )
@@ -26,10 +27,17 @@ func Run(ctx context.Context) error {
 	appsStatesStorage := storage.NewApplicationsStates()
 	appsEventsStorage := storage.NewApplicationsEvents()
 
+	repo := delivery.NewOpsRepo(cfg.Github.Token, delivery.RepoConfig{
+		RepoOwner:  cfg.Github.RepoOwner,
+		RepoName:   cfg.Github.RepoName,
+		BranchName: cfg.Github.RepoBranch,
+	})
+
 	dispatcher := services.NewJobDispatcher(
 		clusters.NewK8SService(k8sConfig, appsStatesStorage, appsEventsStorage),
 		appsStatesStorage,
-		appsEventsStorage)
+		appsEventsStorage,
+		repo)
 	slackBot := bot.NewSlackBot(ctx, bot.SlackOptions{
 		ClientOptions: bot.SlackClientOptions{
 			SlackBotToken: cfg.Bot.SlackBotToken,

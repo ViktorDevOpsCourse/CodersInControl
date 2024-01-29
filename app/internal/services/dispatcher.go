@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/bot"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/services/delivery"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/jobs"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/storage"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
@@ -18,16 +19,19 @@ type JobDispatcher struct {
 	actionReceiver    chan *bot.BotAction
 	appsStatesStorage storage.StateRepository
 	appsEventsStorage storage.EventsRepository
+	github            *delivery.OpsRepo
 }
 
 func NewJobDispatcher(k8sService *clusters.K8S,
 	appsStatesStorage storage.StateRepository,
-	appsEventsStorage storage.EventsRepository) JobDispatcher {
+	appsEventsStorage storage.EventsRepository,
+	github *delivery.OpsRepo) JobDispatcher {
 	return JobDispatcher{
 		k8sService:        k8sService,
 		actionReceiver:    make(chan *bot.BotAction),
 		appsStatesStorage: appsStatesStorage,
 		appsEventsStorage: appsEventsStorage,
+		github:            github,
 	}
 }
 
@@ -41,7 +45,7 @@ func (d *JobDispatcher) Run() {
 			return
 		}
 
-		j, err := jobs.NewJob(botAction, d.appsStatesStorage, d.appsEventsStorage, d.k8sService.GetClustersCopy())
+		j, err := jobs.NewJob(botAction, d.appsStatesStorage, d.appsEventsStorage, d.k8sService.GetClustersCopy(), d.github)
 		if err != nil {
 			botAction.ResponseOnAction(fmt.Sprintf("Something went wrong with command `%s`. Error %s",
 				botAction.GetRawCommand(), err))
@@ -53,7 +57,7 @@ func (d *JobDispatcher) Run() {
 			continue
 		}
 
-		d.proceedJob(j)
+		go d.proceedJob(j)
 
 	}
 }
@@ -70,8 +74,9 @@ func (d *JobDispatcher) isJobExist(jobId string) bool {
 func (d *JobDispatcher) proceedJob(job jobs.Job) {
 	log := logger.FromDefaultContext()
 
-	d.jobs.Store(job.GetId(), job)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
+	d.jobs.Store(job.GetId(), true)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
 	defer cancel()
 
 	jobDone := make(chan bool)

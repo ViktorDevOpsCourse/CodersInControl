@@ -7,6 +7,7 @@ import (
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
 	v12 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"strings"
 	"sync"
 	"time"
 )
@@ -105,13 +106,13 @@ func (c *Cluster) addEventHandler(obj interface{}) {
 func (c *Cluster) updateEventHandler(oldObj, newObj interface{}) {
 	log := logger.FromDefaultContext()
 
-	newDeployment := newObj.(*v12.Deployment)
+	newApp := newObj.(*v12.Deployment)
 
-	if !c.IsWatchedNamespace(newDeployment.Namespace) {
+	if !c.IsWatchedNamespace(newApp.Namespace) {
 		return
 	}
 
-	status, err := c.getDeploymentStatus(newDeployment)
+	status, err := c.getDeploymentStatus(newApp)
 	if err != nil {
 		log.Error(err)
 		return
@@ -121,33 +122,28 @@ func (c *Cluster) updateEventHandler(oldObj, newObj interface{}) {
 		return
 	}
 
-	image := ""
-	if len(newDeployment.Spec.Template.Spec.Containers) != 0 {
-		image = newDeployment.Spec.Template.Spec.Containers[0].Image
-	}
-
-	if prevVersion, ok := c.lastAppResourceVersion[newDeployment.GetName()]; ok {
-		if prevVersion == newDeployment.ResourceVersion {
-			log.Infof("updateEventHandler ResourceVersion for status %s same. Skip", newDeployment.ResourceVersion)
+	if prevVersion, ok := c.lastAppResourceVersion[newApp.GetName()]; ok {
+		if prevVersion == newApp.ResourceVersion {
+			log.Infof("updateEventHandler ResourceVersion for status %s same. Skip", newApp.ResourceVersion)
 			return
 		}
 	}
 
-	c.lastAppResourceVersion[newDeployment.GetName()] = newDeployment.ResourceVersion
+	c.lastAppResourceVersion[newApp.GetName()] = newApp.ResourceVersion
 
-	err = c.appsEventsStorage.Save(c.EnvironmentName, newDeployment.GetName(), storage.ApplicationEvent{
-		AppName:         newDeployment.GetName(),
-		Image:           image,
+	err = c.appsEventsStorage.Save(c.EnvironmentName, newApp.GetName(), storage.ApplicationEvent{
+		AppName:         newApp.GetName(),
+		Image:           c.getImageVersion(newApp),
 		EventTime:       time.Now(),
 		Status:          string(status),
-		ResourceVersion: newDeployment.ResourceVersion,
+		ResourceVersion: newApp.ResourceVersion,
 	})
 	if err != nil {
 		log.Error(err)
 	}
 
 	if status == RunningStatus {
-		prevAppState := c.GetApplicationByName(newDeployment.GetName())
+		prevAppState := c.GetApplicationByName(newApp.GetName())
 		err = c.appsStatesStorage.Save(c.EnvironmentName, prevAppState.GetName(), storage.State{
 			Image: prevAppState.Image,
 		})
@@ -156,7 +152,7 @@ func (c *Cluster) updateEventHandler(oldObj, newObj interface{}) {
 		}
 	}
 
-	c.updateAppCurrentState(newDeployment, status)
+	c.updateAppCurrentState(newApp, status)
 
 }
 
@@ -170,11 +166,6 @@ func (c *Cluster) deleteEventHandler(obj interface{}) {
 
 func (c *Cluster) updateAppCurrentState(app *v12.Deployment, status Status) {
 
-	image := ""
-	if len(app.Spec.Template.Spec.Containers) != 0 {
-		image = app.Spec.Template.Spec.Containers[0].Image
-	}
-
 	c.Applications[app.GetName()] = Application{
 		Name:                 app.GetName(),
 		Namespace:            app.GetNamespace(),
@@ -183,7 +174,7 @@ func (c *Cluster) updateAppCurrentState(app *v12.Deployment, status Status) {
 		Labels:               app.GetLabels(),
 		Replicas:             app.Spec.Replicas,
 		SelectorMatchLabels:  app.Spec.Selector.MatchLabels,
-		Image:                image,
+		Image:                c.getImageVersion(app),
 		Status: Conditions{
 			AvailableReplicas: app.Status.AvailableReplicas,
 			ServiceStatus:     status,
@@ -196,6 +187,15 @@ func (c *Cluster) IsWatchedNamespace(namespace string) bool {
 		return false
 	}
 	return true
+}
+func (c *Cluster) getImageVersion(app *v12.Deployment) string {
+	if len(app.Spec.Template.Spec.Containers) != 0 {
+		imageParts := strings.Split(app.Spec.Template.Spec.Containers[0].Image, ":")
+		if len(imageParts) == 2 {
+			return imageParts[1]
+		}
+	}
+	return ""
 }
 
 func (c *Cluster) getDeploymentStatus(deployment *v12.Deployment) (Status, error) {
