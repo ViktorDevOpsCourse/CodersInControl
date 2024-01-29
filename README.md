@@ -1,4 +1,4 @@
-# Slack bot for managing application versions on Kubernetes
+# Slack bot for managing application versions on multi-env Kubernetes
 
 This bot is designed to simplify the process of managing application versions on Kubernetes directly from your Slack workspace. Whether you need to check the current status of versions, view changes, promote to the next environment, or rollback to a previous version, this bot has you covered.
 
@@ -15,8 +15,8 @@ This bot is designed to simplify the process of managing application versions on
 - [Requirements](#requirements)
   - [Functional](#functional)
   - [Non-Functional](#non-functional)
-- [Architecture Decision Records](#architecture-decision-records)
 - [High-Level Design](#high-level-design)
+- [Architecture Decision Records](#architecture-decision-records)
 
 ## Getting Started
 
@@ -67,10 +67,10 @@ The `rollback` command reverts the application version update to the previous ve
 4. **GitOps Integration:** The system should successfully integrate with GitOps infrastructure, providing automated deployment and update processes.
 5. **Documentation:** The bot should have clear and comprehensive user documentation explaining the usage of each command and system capabilities.
 
-## Architecture Decision Records
-
-For insights into the architectural decisions behind the Slack Version Management Bot, refer to the [ADR Documentation](./ADR.md).
-
 ## High-Level Design
 
 Explore the high-level design and components of the Slack Version Management Bot in the [HLD Documentation](./HPD.md).
+
+## Architecture Decision Records
+
+For insights into the architectural decisions behind the Slack Version Management Bot, refer to the [ADR Documentation](./ADR.md).
