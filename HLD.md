@@ -20,7 +20,7 @@ The Slack Bot is designed to facilitate the version control and deployment proce
 
 4. **Helm OCI registry**
 
-   The Helm OCI Registry serves as a centralized repository of Helm diagrams to manage application deployment, providing a standardized way to package Kubernetes applications and their dependencies.
+   The Helm OCI Registry serves as a centralized repository of Helm charts to manage application deployment, providing a standardized way to package Kubernetes applications and their dependencies.
 
 ## Interaction Flow
 
@@ -34,7 +34,7 @@ The Slack Bot is designed to facilitate the version control and deployment proce
 
 ## Benefits
 
-- **Standardized GitOps Approach**: Utilizing Flux and GitOps principles ensures a standardized and automated approach to managing versions and deployments. This leads to consistency and reliability in the application lifecycle management process.
+- **Standardized GitOps Approach**: Using Flux and GitOps principles ensures a standardized and automated approach to managing versions and deployments. This leads to consistency and reliability in the application lifecycle management process.
 
 - **Clear Environment Separation**: Multiple Kubernetes clusters for different environments provide clear separation, reducing the risk of errors and ensuring a consistent deployment process. This separation enhances security and stability across development, testing, staging, and production environments.
 
