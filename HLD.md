@@ -4,6 +4,8 @@
 
 The Slack Bot is designed to facilitate the version control and deployment processes for applications running on multi-environments Kubernetes (`dev`, `qa`, `stag`, `prod`). The system integrates with Slack, providing developers with a convenient interface to interact with the versioning and deployment functionalities.
 
+![img.png](assets/general_shema.png)
+
 ## Architecture Components
 
 1. **Slack Bot**

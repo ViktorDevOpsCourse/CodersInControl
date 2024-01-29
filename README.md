@@ -26,28 +26,15 @@ Ensure that you have the following prerequisites before installing the Slack bot
 
 - Configured and running multi-environment Kubernetes clusters (for demo see [/demo/README.md](./demo/README.md))
 - Installed and configured Flux to implement a GitOps approach to managing both infrastructure and applications. (for demo see [/demo/README.md](./demo/README.md))
+- Setup and run slackbot service and add bot to slack channel ([instruction](/app/README.md))
 
 ### Installation
 
 Follow these steps to install and set up the bot:
 
-## Usage
+## Usage bot
 
-### `list`
-
-The `list` command provides an overview of the current version status in different environments.
-
-### `diff`
-
-The `diff` command shows a list of changes needed to update the application version in a specific environment.
-
-### `promote`
-
-The `promote` command updates the application version to the next environment.
-
-### `rollback`
-
-The `rollback` command reverts the application version update to the previous version.
+[Instruction](/app/README.md)
 
 ## Requirements
 

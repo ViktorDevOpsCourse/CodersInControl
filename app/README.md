@@ -114,10 +114,11 @@ Like promote but deploying last success deployment version
 `prometheus-deployment` - service name. !important it should be the same like in deployment manifest `metadata.name`
 
 `stage` - name you environment/cluster. !important should be the same like in config bot file `SERVICE_CONFIG_FILE_PATH` clusters list
+
 ![img.png](docs/assets/rollback_result.png)
 
 ## Main system components
-`bot` - provide interface to work with slack. Accept events and processing its
+`bot` - provide interface to work with slack. Accept events and processing it
 
 `k8s service` - contain all applications from clusters which are specified in the configuration to all namespaces.
 We can some namespaces exclude from monitoring. TODO set it namespaces in config file
