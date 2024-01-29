@@ -12,6 +12,7 @@ This bot is designed to simplify the process of managing application versions on
   - [`diff`](#diff)
   - [`promote`](#promote)
   - [`rollback`](#rollback)
+  - [How it works](#how-it-works)
 - [Requirements](#requirements)
   - [Functional](#functional)
   - [Non-Functional](#non-functional)
@@ -30,11 +31,85 @@ Ensure that you have the following prerequisites before installing the Slack bot
 
 ### Installation
 
-Follow these steps to install and set up the bot:
+To use the Slackbot, follow these steps to install and set up the necessary credentials:
+
+1. **Slack Bot Tokens:**
+   - Create a Slack app on your workspace.
+   - Generate a Bot Token (`SLACK_BOT_TOKEN`) and an App-level Token (`SLACK_APP_TOKEN`).
+   
+2. **GitHub Token:**
+   - Obtain a GitHub Personal Access Token (`GITHUB_API_TOKEN`) with the necessary permissions.
+   
+3. **Service Configuration:**
+   - Set the environment variables by adding the following lines to your shell configuration file (e.g., `.bashrc`, `.zshrc`):
+
+     ```dotenv
+     export SLACK_BOT_TOKEN=<xoxb-...>
+     export SLACK_APP_TOKEN=<xapp-...>
+     export GITHUB_API_TOKEN=<github_token>
+     export SERVICE_CONFIG_FILE_PATH='path to config'
+     ```
+   
+   - Configure the Slack bot using the provided [config](config.example.yaml) file. Indicate the file path in `SERVICE_CONFIG_FILE_PATH`. The configuration includes settings for clusters, Slack bot, and the GitHub repository.
 
 ## Usage bot
 
-[Instruction](/app/README.md)
+More details you can find in [`./app/README.md`](./app/README.md)
+
+Once the Slackbot is set up, you can interact with it using various commands in the Slack channel:
+
+### `list`
+
+Use the `list` command to obtain an overview of the current version status in different environments:
+
+```
+@botName list
+```
+
+### `diff`
+
+The `diff` command shows a list of changes needed to update the application version in a specific environment. Specify the target environment, e.g., `stage`:
+
+```
+@botName diff stage
+```
+
+### `promote`
+
+Deploy your application to a specific cluster and environment using the `promote` command. Provide the service name, version, and target environment:
+
+```
+@botName promote podinfo@7.0.0 to prod
+```
+
+- `podinfo`: Service name (must match the name in the deployment manifest `metadata.name`).
+- `7.0.0`: Version Helm package for the service.
+- `prod`: Target environment/cluster (must match the name in the config bot file `SERVICE_CONFIG_FILE_PATH` clusters list).
+
+### `rollback`
+
+The `rollback` command reverts the application version update to the previous version. Provide the service name and target environment:
+
+```
+@botName rollback prometheus-deployment on stage
+```
+
+- `prometheus-deployment`: Service name (must match the name in the deployment manifest `metadata.name`).
+- `stage`: Target environment/cluster (must match the name in the config bot file `SERVICE_CONFIG_FILE_PATH` clusters list).
+
+### How It Works
+
+The Slack bot accepts actions in the Slack channel, creating a job based on those actions. The job has access to all clusters and applications in different namespaces. The primary focus is deploying applications via `Deployment` Kubernetes resources, as the bot monitors deployments and tracks them automatically.
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: podinfo # application name inside service
+```
+
+- **podinfo** - we use it like application name inside service and track and detect applications git `deployment.GetName()`
+- **@botName** - name for your bot, you setted it when created bot inside slack 
 
 ## Requirements
 
