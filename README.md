@@ -1,6 +1,6 @@
 # Slack bot for managing application versions on multi-env Kubernetes
 
-This bot is designed to simplify the process of managing application versions on Kubernetes directly from your Slack workspace. Whether you need to check the current status of versions, view changes, promote to the next environment, or rollback to a previous version, this bot has you covered.
+This bot is designed to simplify the process of managing application versions on Kubernetes directly from your Slack workspace. Whether you need to check the current status of versions, view changes, promote to the next environment, or rollback to a previous version, this bot helps you.
 
 ## Table of Contents
 
@@ -22,7 +22,7 @@ This bot is designed to simplify the process of managing application versions on
 
 ### Prerequisites
 
-Ensure you have the following prerequisites before installing the Slack bot:
+Ensure that you have the following prerequisites before installing the Slack bot:
 
 - Configured and running multi-environment Kubernetes clusters (for demo see [/demo/README.md](./demo/README.md))
 - Installed and configured Flux to implement a GitOps approach to managing both infrastructure and applications. (for demo see [/demo/README.md](./demo/README.md))
