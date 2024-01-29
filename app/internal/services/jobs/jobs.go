@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/bot"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters"
@@ -16,7 +17,8 @@ const (
 	JobRollBack = "rollback"
 )
 
-var re = regexp.MustCompile(`(\S+)@(\S+)\s+to\s+(\w+)`)
+var rePromote = regexp.MustCompile(`(\S+)@(\S+)\s+to\s+(\w+)`)
+var reRollBack = regexp.MustCompile(`(\S+)\s+on\s+(\w+)`)
 
 type Job interface {
 	GetId() string
@@ -25,6 +27,7 @@ type Job interface {
 }
 
 func NewJob(botAction *bot.BotAction,
+	appsStatesStorage storage.StateRepository,
 	appsEventsStorage storage.EventsRepository,
 	clusters map[string]clusters.Cluster) (Job, error) {
 
@@ -45,7 +48,7 @@ func NewJob(botAction *bot.BotAction,
 			currentEnv: botAction.GetCommandArgs(),
 		}, nil
 	case JobPromote:
-		matches := re.FindStringSubmatch(botAction.GetCommandArgs())
+		matches := rePromote.FindStringSubmatch(botAction.GetCommandArgs())
 		// TODO validate matches
 		return &PromoteJob{
 			AppName:           matches[1],
@@ -56,6 +59,24 @@ func NewJob(botAction *bot.BotAction,
 			appsEventsStorage: appsEventsStorage,
 		}, nil
 	case JobRollBack:
+		matches := reRollBack.FindStringSubmatch(botAction.GetCommandArgs())
+		// TODO validate matches
+		prevAppState, err := appsStatesStorage.GetLastApplied(matches[2], matches[1])
+		if err != nil {
+			if errors.Is(err, storage.NotFoundError) {
+				return nil, fmt.Errorf("do not find previous service version in database :grimacing: ")
+			}
+			return nil, fmt.Errorf("error occured while processing rollback: `%s`", err)
+		}
+
+		return &PromoteJob{
+			AppName:           matches[1],
+			BuildTag:          prevAppState.Image,
+			Environment:       matches[2],
+			botAction:         botAction,
+			clusters:          clusters,
+			appsEventsStorage: appsEventsStorage,
+		}, nil
 	}
 	return nil, fmt.Errorf("unknown job command `%s`", botAction.GetCommand())
 }

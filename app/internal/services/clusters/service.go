@@ -21,15 +21,15 @@ func NewK8SService(cfg Config,
 		clusters: make(map[string]*Cluster),
 	}
 
-	for envName, kubeConfig := range cfg.Clusters {
+	for clusterName, kubeConfig := range cfg.Clusters {
 		client, err := NewClient(kubeConfig)
 		if err != nil {
-			log.Errorf("Failed connection to `%s` cluster. Err `%s`", envName, err)
+			log.Errorf("Failed connection to `%s` cluster. Err `%s`", clusterName, err)
 			continue
 		}
-		cluster := NewCluster(envName, client, appsStatesStorage, appsEventsStorage)
+		cluster := NewCluster(clusterName, client, appsStatesStorage, appsEventsStorage)
 		cluster.Run()
-		k8s.clusters[envName] = cluster
+		k8s.clusters[clusterName] = cluster
 	}
 
 	if len(k8s.clusters) == 0 {

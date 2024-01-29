@@ -6,8 +6,8 @@ import (
 )
 
 type StateRepository interface {
-	GetLastApplied(appName string) (State, error)
-	Save(appName string, state State) error
+	GetLastApplied(clusterName, appName string) (State, error)
+	Save(clusterName, appName string, state State) error
 }
 
 var NotFoundError = errors.New("item not found")
@@ -17,42 +17,48 @@ type State struct {
 }
 
 type ApplicationsStates struct {
-	applications map[string]*Stack // map[appName][]State
-	sync.RWMutex
+	applications map[string]map[string]*Stack // map[clusterName][appName][]State
+	sync.Mutex
 }
 
 func NewApplicationsStates() StateRepository {
 	return &ApplicationsStates{
-		applications: make(map[string]*Stack),
+		applications: make(map[string]map[string]*Stack),
 	}
 }
 
-func (s *ApplicationsStates) GetLastApplied(appName string) (State, error) {
-	s.RLock()
-	defer s.RUnlock()
+func (s *ApplicationsStates) GetLastApplied(clusterName, appName string) (State, error) {
+	s.Lock()
+	defer s.Unlock()
 
-	if _, ok := s.applications[appName]; !ok {
+	if _, ok := s.applications[clusterName]; !ok {
 		return State{}, NotFoundError
 	}
 
-	stateStack := s.applications[appName]
+	if _, ok := s.applications[clusterName][appName]; !ok {
+		return State{}, NotFoundError
+	}
 
-	return stateStack.Pop()
+	return s.applications[clusterName][appName].Pop()
 }
 
-func (s *ApplicationsStates) Save(appName string, state State) error {
+func (s *ApplicationsStates) Save(clusterName, appName string, state State) error {
 	s.Lock()
 	defer s.Unlock()
+
+	if _, ok := s.applications[clusterName]; !ok {
+		s.applications[clusterName] = make(map[string]*Stack)
+	}
 
 	if _, ok := s.applications[appName]; !ok {
 		stack := &Stack{
 			Sates: make([]State, 0),
 		}
 		stack.Push(state)
-		s.applications[appName] = stack
+		s.applications[clusterName][appName] = stack
 	}
 
-	stateStack := s.applications[appName]
+	stateStack := s.applications[clusterName][appName]
 	stateStack.Push(state)
 
 	return nil

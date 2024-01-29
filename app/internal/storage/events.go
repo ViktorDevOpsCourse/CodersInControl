@@ -6,8 +6,8 @@ import (
 )
 
 type EventsRepository interface {
-	GetAndRemove(envName, appName string) (ApplicationEvent, error)
-	Save(envName, appName string, event ApplicationEvent) error
+	GetAndRemove(clusterName, appName string) (ApplicationEvent, error)
+	Save(clusterName, appName string, event ApplicationEvent) error
 }
 
 type ApplicationEvent struct {
@@ -19,7 +19,7 @@ type ApplicationEvent struct {
 }
 
 type ApplicationsEvents struct {
-	events map[string]map[string]ApplicationEvent // map[envName]map[appName]ApplicationData
+	events map[string]map[string]ApplicationEvent // map[clusterName]map[appName]ApplicationData
 	sync.Mutex
 }
 
@@ -29,33 +29,31 @@ func NewApplicationsEvents() EventsRepository {
 	}
 }
 
-func (e *ApplicationsEvents) GetAndRemove(envName, appName string) (ApplicationEvent, error) {
+func (e *ApplicationsEvents) GetAndRemove(clusterName, appName string) (ApplicationEvent, error) {
 	e.Lock()
 	defer e.Unlock()
 
-	if _, ok := e.events[envName]; !ok {
+	if _, ok := e.events[clusterName]; !ok {
 		return ApplicationEvent{}, NotFoundError
 	}
 
-	envApps := e.events[envName]
-
-	if _, ok := envApps[appName]; !ok {
+	if _, ok := e.events[clusterName][appName]; !ok {
 		return ApplicationEvent{}, NotFoundError
 	}
 
-	appEvent := envApps[appName]
+	appEvent := e.events[clusterName][appName]
 
-	delete(envApps, appName)
+	delete(e.events[clusterName], appName)
 
 	return appEvent, nil
 
 }
 
-func (e *ApplicationsEvents) Save(envName, appName string, event ApplicationEvent) error {
-	if _, ok := e.events[envName]; !ok {
-		e.events[envName] = make(map[string]ApplicationEvent)
+func (e *ApplicationsEvents) Save(clusterName, appName string, event ApplicationEvent) error {
+	if _, ok := e.events[clusterName]; !ok {
+		e.events[clusterName] = make(map[string]ApplicationEvent)
 	}
 
-	e.events[envName][appName] = event
+	e.events[clusterName][appName] = event
 	return nil
 }

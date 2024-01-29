@@ -24,7 +24,7 @@ type Cluster struct {
 	sync.RWMutex
 }
 
-func NewCluster(envName string,
+func NewCluster(clusterName string,
 	client Client,
 	appsStatesStorage storage.StateRepository,
 	appsEventsStorage storage.EventsRepository) *Cluster {
@@ -34,7 +34,7 @@ func NewCluster(envName string,
 		client:                 client,
 		Applications:           make(map[string]Application),
 		Namespaces:             make(map[string]Namespace),
-		EnvironmentName:        envName,
+		EnvironmentName:        clusterName,
 		appsStatesStorage:      appsStatesStorage,
 		appsEventsStorage:      appsEventsStorage,
 		lastAppResourceVersion: make(map[string]string),
@@ -146,9 +146,9 @@ func (c *Cluster) updateEventHandler(oldObj, newObj interface{}) {
 		log.Error(err)
 	}
 
-	oldAppState := c.GetApplicationByName(newDeployment.GetName())
-	err = c.appsStatesStorage.Save(oldAppState.GetName(), storage.State{
-		Image: oldAppState.Image,
+	prevAppState := c.GetApplicationByName(newDeployment.GetName())
+	err = c.appsStatesStorage.Save(c.EnvironmentName, prevAppState.GetName(), storage.State{
+		Image: prevAppState.Image,
 	})
 	if err != nil {
 		log.Error(err)
