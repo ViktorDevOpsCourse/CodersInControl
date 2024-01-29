@@ -6,7 +6,7 @@ import (
 )
 
 type StateRepository interface {
-	GetLastApplied(clusterName, appName string) (State, error)
+	GetLastSuccessState(clusterName, appName string) (State, error)
 	Save(clusterName, appName string, state State) error
 }
 
@@ -27,7 +27,7 @@ func NewApplicationsStates() StateRepository {
 	}
 }
 
-func (s *ApplicationsStates) GetLastApplied(clusterName, appName string) (State, error) {
+func (s *ApplicationsStates) GetLastSuccessState(clusterName, appName string) (State, error) {
 	s.Lock()
 	defer s.Unlock()
 

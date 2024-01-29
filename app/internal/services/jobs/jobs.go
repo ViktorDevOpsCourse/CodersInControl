@@ -61,7 +61,8 @@ func NewJob(botAction *bot.BotAction,
 	case JobRollBack:
 		matches := reRollBack.FindStringSubmatch(botAction.GetCommandArgs())
 		// TODO validate matches
-		prevAppState, err := appsStatesStorage.GetLastApplied(matches[2], matches[1])
+		// TODO overview store state or flow because we can only 1 success state
+		prevAppState, err := appsStatesStorage.GetLastSuccessState(matches[2], matches[1])
 		if err != nil {
 			if errors.Is(err, storage.NotFoundError) {
 				return nil, fmt.Errorf("do not find previous service version in database :grimacing: ")
