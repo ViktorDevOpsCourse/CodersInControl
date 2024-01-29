@@ -11,7 +11,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ../../infra/ctrls
+  path: ../infra/ctrls
   prune: true
   wait: true
 ---
