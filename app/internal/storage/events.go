@@ -6,8 +6,8 @@ import (
 )
 
 type EventsRepository interface {
-	Get(AppName string) (ApplicationEvent, error)
-	Save(AppName string, event ApplicationEvent) error
+	Get(envName, appName string) (ApplicationEvent, error)
+	Save(envName, appName string, event ApplicationEvent) error
 }
 
 type ApplicationEvent struct {
@@ -18,30 +18,43 @@ type ApplicationEvent struct {
 }
 
 type ApplicationsEvents struct {
-	events map[string]ApplicationEvent // map[appName]ApplicationData
+	events map[string]map[string]ApplicationEvent // map[envName]map[appName]ApplicationData
 	sync.RWMutex
 }
 
 func NewApplicationsEvents() EventsRepository {
 	return &ApplicationsEvents{
-		events: make(map[string]ApplicationEvent),
+		events: make(map[string]map[string]ApplicationEvent),
 	}
 }
 
-func (e *ApplicationsEvents) Get(AppName string) (ApplicationEvent, error) {
+func (e *ApplicationsEvents) Get(envName, appName string) (ApplicationEvent, error) {
 	e.RLock()
 	defer e.RUnlock()
 
-	if appEvent, ok := e.events[AppName]; ok {
-		delete(e.events, AppName)
-		
-		return appEvent, nil
+	if _, ok := e.events[envName]; !ok {
+		return ApplicationEvent{}, NotFoundError
 	}
 
-	return ApplicationEvent{}, NotFoundError
+	envApps := e.events[envName]
+
+	if _, ok := envApps[appName]; !ok {
+		return ApplicationEvent{}, NotFoundError
+	}
+
+	appEvent := envApps[appName]
+
+	delete(envApps, appName)
+
+	return appEvent, nil
+
 }
 
-func (e *ApplicationsEvents) Save(AppName string, event ApplicationEvent) error {
-	e.events[AppName] = event
+func (e *ApplicationsEvents) Save(envName, appName string, event ApplicationEvent) error {
+	if _, ok := e.events[envName]; !ok {
+		e.events[envName] = make(map[string]ApplicationEvent)
+	}
+
+	e.events[envName][appName] = event
 	return nil
 }

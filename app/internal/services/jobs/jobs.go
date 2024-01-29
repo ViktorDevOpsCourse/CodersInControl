@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/bot"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/clusters"
+	"github.com/viktordevopscourse/codersincontrol/app/internal/storage"
+	"regexp"
 )
 
 const (
@@ -14,13 +16,17 @@ const (
 	JobRollBack = "rollback"
 )
 
+var re = regexp.MustCompile(`(\S+)@(\S+)\s+to\s+(\w+)`)
+
 type Job interface {
 	GetId() string
 	Launch(context.Context, chan bool)
 	ResponseToBot(string)
 }
 
-func NewJob(botAction *bot.BotAction, clusters map[string]clusters.Cluster) (Job, error) {
+func NewJob(botAction *bot.BotAction,
+	appsEventsStorage storage.EventsRepository,
+	clusters map[string]clusters.Cluster) (Job, error) {
 
 	switch botAction.GetCommand() {
 	case jobList:
@@ -39,10 +45,15 @@ func NewJob(botAction *bot.BotAction, clusters map[string]clusters.Cluster) (Job
 			currentEnv: botAction.GetCommandArgs(),
 		}, nil
 	case JobPromote:
-		//TODO pars raw command args
+		matches := re.FindStringSubmatch(botAction.GetCommandArgs())
+		// TODO validate matches
 		return &PromoteJob{
-			botAction: botAction,
-			cluster:   clusters,
+			AppName:           matches[1],
+			BuildTag:          matches[2],
+			Environment:       matches[3],
+			botAction:         botAction,
+			cluster:           clusters,
+			appsEventsStorage: appsEventsStorage,
 		}, nil
 	case JobRollBack:
 	}

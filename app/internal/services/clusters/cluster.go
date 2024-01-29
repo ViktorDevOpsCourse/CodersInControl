@@ -8,20 +8,23 @@ import (
 	v12 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sync"
+	"time"
 )
 
 type Cluster struct {
-	client       Client
-	Applications map[string]Application
-	Namespaces   map[string]Namespace
-	Controller   controller.Controller
+	client          Client
+	Applications    map[string]Application
+	Namespaces      map[string]Namespace
+	Controller      controller.Controller
+	EnvironmentName string
 
 	appsStatesStorage storage.StateRepository
 	appsEventsStorage storage.EventsRepository
 	sync.RWMutex
 }
 
-func NewCluster(client Client,
+func NewCluster(envName string,
+	client Client,
 	appsStatesStorage storage.StateRepository,
 	appsEventsStorage storage.EventsRepository) *Cluster {
 	log := logger.FromDefaultContext()
@@ -30,6 +33,7 @@ func NewCluster(client Client,
 		client:            client,
 		Applications:      make(map[string]Application),
 		Namespaces:        make(map[string]Namespace),
+		EnvironmentName:   envName,
 		appsStatesStorage: appsStatesStorage,
 		appsEventsStorage: appsEventsStorage,
 	}
@@ -93,27 +97,13 @@ func (c *Cluster) addEventHandler(obj interface{}) {
 		return
 	}
 
-	c.Applications[deployment.GetName()] = Application{
-		Name:                 deployment.GetName(),
-		Namespace:            deployment.GetNamespace(),
-		AppliedConfiguration: deployment.Annotations["kubectl.kubernetes.io/last-applied-configuration"],
-		CreatedAt:            deployment.CreationTimestamp.Time,
-		Labels:               deployment.GetLabels(),
-		Replicas:             deployment.Spec.Replicas,
-		SelectorMatchLabels:  deployment.Spec.Selector.MatchLabels,
-		Image:                deployment.Spec.Template.Spec.Containers[0].Image, // todo understand how update this field
-		Status: Conditions{
-			AvailableReplicas: deployment.Status.AvailableReplicas,
-			ServiceStatus:     status,
-		},
-	}
+	c.updateAppCurrentState(deployment, status)
 }
 
 func (c *Cluster) updateEventHandler(oldObj, newObj interface{}) {
 	log := logger.FromDefaultContext()
 
 	newDeployment := newObj.(*v12.Deployment)
-	oldDeployment := oldObj.(*v12.Deployment)
 
 	if !c.IsWatchedNamespace(newDeployment.Namespace) {
 		return
@@ -124,16 +114,36 @@ func (c *Cluster) updateEventHandler(oldObj, newObj interface{}) {
 		log.Error(err)
 		return
 	}
-	statusO, err := c.getDeploymentStatus(oldDeployment)
-	if err != nil {
-		log.Error(err)
+
+	if status == InProgressStatus {
 		return
 	}
 
-	fmt.Println("new", status, newDeployment.Status.Conditions, newDeployment.Spec.Template.Spec.Containers[0].Image)
-	fmt.Println("old", statusO, oldDeployment.Status.Conditions, oldDeployment.Spec.Template.Spec.Containers[0].Image)
+	image := ""
+	if len(newDeployment.Spec.Template.Spec.Containers) != 0 {
+		image = newDeployment.Spec.Template.Spec.Containers[0].Image
+	}
 
-	fmt.Printf("\n\n")
+	err = c.appsEventsStorage.Save(c.EnvironmentName, newDeployment.GetName(), storage.ApplicationEvent{
+		AppName:   newDeployment.GetName(),
+		Image:     image,
+		EventTime: time.Now(),
+		Status:    string(status),
+	})
+	if err != nil {
+		log.Error(err)
+	}
+
+	oldAppState := c.GetApplicationByName(newDeployment.GetName())
+	err = c.appsStatesStorage.Save(oldAppState.GetName(), storage.State{
+		Image: oldAppState.Image,
+	})
+	if err != nil {
+		log.Error(err)
+	}
+
+	c.updateAppCurrentState(newDeployment, status)
+
 }
 
 func (c *Cluster) deleteEventHandler(obj interface{}) {
@@ -142,6 +152,29 @@ func (c *Cluster) deleteEventHandler(obj interface{}) {
 	defer c.Unlock()
 
 	delete(c.Applications, deployment.GetName())
+}
+
+func (c *Cluster) updateAppCurrentState(app *v12.Deployment, status Status) {
+
+	image := ""
+	if len(app.Spec.Template.Spec.Containers) != 0 {
+		image = app.Spec.Template.Spec.Containers[0].Image
+	}
+
+	c.Applications[app.GetName()] = Application{
+		Name:                 app.GetName(),
+		Namespace:            app.GetNamespace(),
+		AppliedConfiguration: app.Annotations["kubectl.kubernetes.io/last-applied-configuration"],
+		CreatedAt:            app.CreationTimestamp.Time,
+		Labels:               app.GetLabels(),
+		Replicas:             app.Spec.Replicas,
+		SelectorMatchLabels:  app.Spec.Selector.MatchLabels,
+		Image:                image,
+		Status: Conditions{
+			AvailableReplicas: app.Status.AvailableReplicas,
+			ServiceStatus:     status,
+		},
+	}
 }
 
 func (c *Cluster) IsWatchedNamespace(namespace string) bool {

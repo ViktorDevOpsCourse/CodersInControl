@@ -41,7 +41,7 @@ func (d *JobDispatcher) Run() {
 			return
 		}
 
-		j, err := jobs.NewJob(botAction, d.k8sService.GetClustersCopy())
+		j, err := jobs.NewJob(botAction, d.appsEventsStorage, d.k8sService.GetClustersCopy())
 		if err != nil {
 			botAction.ResponseOnAction(fmt.Sprintf("Undefined command `%s`. Error %s",
 				botAction.GetRawCommand(), err))
