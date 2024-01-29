@@ -69,7 +69,7 @@ The `rollback` command reverts the application version update to the previous ve
 
 ## High-Level Design
 
-Explore the high-level design and components of the Slack Version Management Bot in the [HLD Documentation](./HPD.md).
+Explore the high-level design and components of the Slack Version Management Bot in the [HLD Documentation](./HLD.md).
 
 ## Architecture Decision Records
 
