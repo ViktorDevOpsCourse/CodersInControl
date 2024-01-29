@@ -51,6 +51,6 @@ for cluster in ${clusters}; do
             --owner="$GITHUB_USER" \
             --repository="$GITHUB_REPO" \
             --branch="main" \
-            --path="infra/clusters/$cluster"
+            --path="demo/clusters/$cluster"
     fi
 done
