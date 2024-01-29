@@ -14,6 +14,12 @@ type DiffJob struct {
 }
 
 func (d *DiffJob) Launch(ctx context.Context, jobDone chan bool) {
+	if len(d.clusters) <= 1 {
+		d.ResponseToBot("you have 1 or less clusters")
+		jobDone <- true
+		return
+	}
+
 	message := ""
 	currentApps := d.clusters[d.currentEnv].Applications
 	for env, cluster := range d.clusters {
