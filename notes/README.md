@@ -1,5 +1,3 @@
-## Документація проєкту
 
-### Промоушин
 Перша інтерація схеми промоушена
-<img src="assets/promote_shema.png">
+<img src="promote_shema.png">
