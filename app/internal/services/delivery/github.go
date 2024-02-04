@@ -9,26 +9,36 @@ import (
 	"strings"
 )
 
-type OpsRepo struct {
-	client     *github.Client
-	repoOwner  string
-	repoName   string
-	branchName string
+type FluxRepo struct {
+	client        *github.Client
+	repoOwner     string
+	repoName      string
+	workingBranch string
 }
 
-type RepoConfig struct {
-	RepoOwner  string
-	RepoName   string
-	BranchName string
+type Repo struct {
+	Owner         string
+	Name          string
+	WorkingBranch string
 }
 
-func NewOpsRepo(token string, config RepoConfig) *OpsRepo {
+type Application struct {
+	FilePath string
+	Version  string
+}
 
-	g := &OpsRepo{
-		repoOwner:  config.RepoOwner,
-		repoName:   config.RepoName,
-		branchName: config.BranchName,
+type Config struct {
+	Repo Repo
+}
+
+func NewFluxRepo(token string, config Config) Updater {
+
+	g := &FluxRepo{
+		repoOwner:     config.Repo.Owner,
+		repoName:      config.Repo.Name,
+		workingBranch: config.Repo.WorkingBranch,
 	}
+
 	ctx := context.Background()
 	githubTokenSource := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
@@ -48,11 +58,21 @@ func NewOpsRepo(token string, config RepoConfig) *OpsRepo {
 	return g
 }
 
-func (g *OpsRepo) UpdateImage(filePath string, version string) error {
+func (g *FluxRepo) Update(args interface{}) error {
+	appConfig := Application{}
+	var ok bool
+	if appConfig, ok = args.(Application); !ok {
+		return fmt.Errorf("invalid arguments to update flux, got %#v, expected %#v", args, Application{})
+	}
 
-	fileContent, _, _, err := g.client.Repositories.GetContents(context.Background(), g.repoOwner, g.repoName, filePath, &github.RepositoryContentGetOptions{
-		Ref: g.branchName,
-	})
+	fileContent, _, _, err := g.client.Repositories.GetContents(
+		context.Background(),
+		g.repoOwner,
+		g.repoName,
+		appConfig.FilePath,
+		&github.RepositoryContentGetOptions{
+			Ref: g.workingBranch,
+		})
 	if err != nil {
 		return fmt.Errorf("github could not get file content: %v", err)
 	}
@@ -62,18 +82,23 @@ func (g *OpsRepo) UpdateImage(filePath string, version string) error {
 		return fmt.Errorf("github not decode file content: %v", err)
 	}
 
-	newContent := strings.ReplaceAll(content, `version: "*"`, fmt.Sprintf(`version: "%s"`, version))
+	newContent := strings.ReplaceAll(content, `version: "*"`, fmt.Sprintf(`version: "%s"`, appConfig.Version))
 
 	sha := fileContent.GetSHA()
 
-	commitMessage := fmt.Sprintf("Update version to %s", version)
+	commitMessage := fmt.Sprintf("Update version to %s", appConfig.Version)
 	commit := &github.RepositoryContentFileOptions{
 		Message: &commitMessage,
 		Content: []byte(newContent),
 		SHA:     &sha,
 	}
 
-	_, _, err = g.client.Repositories.UpdateFile(context.Background(), g.repoOwner, g.repoName, filePath, commit)
+	_, _, err = g.client.Repositories.UpdateFile(
+		context.Background(),
+		g.repoOwner,
+		g.repoName,
+		appConfig.Version,
+		commit)
 	if err != nil {
 		return fmt.Errorf("github could not update file: %v", err)
 	}

@@ -27,7 +27,11 @@ func NewK8SService(cfg Config,
 			log.Errorf("Failed connection to `%s` cluster. Err `%s`", clusterName, err)
 			continue
 		}
+
 		cluster := NewCluster(clusterName, client, appsStatesStorage, appsEventsStorage)
+
+		log.Infof("Connected to k8s cluster `%s`", clusterName)
+
 		cluster.Run()
 		k8s.clusters[clusterName] = cluster
 	}

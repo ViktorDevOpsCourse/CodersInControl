@@ -27,10 +27,12 @@ func Run(ctx context.Context) error {
 	appsStatesStorage := storage.NewApplicationsStates()
 	appsEventsStorage := storage.NewApplicationsEvents()
 
-	repo := delivery.NewOpsRepo(cfg.Github.Token, delivery.RepoConfig{
-		RepoOwner:  cfg.Github.RepoOwner,
-		RepoName:   cfg.Github.RepoName,
-		BranchName: cfg.Github.RepoBranch,
+	repo := delivery.NewFluxRepo(cfg.Github.Token, delivery.Config{
+		Repo: delivery.Repo{
+			Owner:         cfg.Github.RepoOwner,
+			Name:          cfg.Github.RepoName,
+			WorkingBranch: cfg.Github.RepoBranch,
+		},
 	})
 
 	dispatcher := services.NewJobDispatcher(

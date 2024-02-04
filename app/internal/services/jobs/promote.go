@@ -14,13 +14,13 @@ import (
 )
 
 type PromoteJob struct {
-	botAction         *bot.BotAction
-	AppName           string
-	BuildTag          string
-	Environment       string
-	appsEventsStorage storage.EventsRepository
-	clusters          map[string]clusters.Cluster
-	repo              *delivery.OpsRepo
+	botAction          *bot.BotAction
+	AppName            string
+	BuildTag           string
+	Environment        string
+	appsEventsStorage  storage.EventsRepository
+	clusters           map[string]clusters.Cluster
+	ApplicationUpdater delivery.Updater
 }
 
 func (p *PromoteJob) Launch(ctx context.Context, jobDone chan bool) {
@@ -33,7 +33,11 @@ func (p *PromoteJob) Launch(ctx context.Context, jobDone chan bool) {
 		return
 	}
 
-	err := p.repo.UpdateImage(fmt.Sprintf("apps/%s/%s-values.yaml", p.Environment, p.AppName), p.BuildTag)
+	err := p.ApplicationUpdater.Update(delivery.Application{
+		FilePath: fmt.Sprintf("apps/%s/%s-values.yaml", p.Environment, p.AppName),
+		Version:  p.BuildTag,
+	})
+
 	if err != nil {
 		log.Errorf("update image version `%s` failed. Err %s ", p.BuildTag, err)
 		p.ResponseToBot(fmt.Sprintf("image: `%s` promoted on %s. github update image version `%[1]s` failed. Err %[3]s ", p.BuildTag, p.Environment, err))

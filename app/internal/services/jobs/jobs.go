@@ -31,7 +31,7 @@ func NewJob(botAction *bot.BotAction,
 	appsStatesStorage storage.StateRepository,
 	appsEventsStorage storage.EventsRepository,
 	clusters map[string]clusters.Cluster,
-	github *delivery.OpsRepo) (Job, error) {
+	github delivery.Updater) (Job, error) {
 
 	switch botAction.GetCommand() {
 	case jobList:
@@ -56,13 +56,13 @@ func NewJob(botAction *bot.BotAction,
 		}
 		// TODO validate matches
 		return &PromoteJob{
-			AppName:           matches[1],
-			BuildTag:          matches[2],
-			Environment:       matches[3],
-			botAction:         botAction,
-			clusters:          clusters,
-			appsEventsStorage: appsEventsStorage,
-			repo:              github,
+			AppName:            matches[1],
+			BuildTag:           matches[2],
+			Environment:        matches[3],
+			botAction:          botAction,
+			clusters:           clusters,
+			appsEventsStorage:  appsEventsStorage,
+			ApplicationUpdater: github,
 		}, nil
 	case JobRollBack:
 		matches := reRollBack.FindStringSubmatch(botAction.GetCommandArgs())
@@ -80,13 +80,13 @@ func NewJob(botAction *bot.BotAction,
 		}
 
 		return &PromoteJob{
-			AppName:           matches[1],
-			BuildTag:          prevAppState.Image,
-			Environment:       matches[2],
-			botAction:         botAction,
-			clusters:          clusters,
-			appsEventsStorage: appsEventsStorage,
-			repo:              github,
+			AppName:            matches[1],
+			BuildTag:           prevAppState.Image,
+			Environment:        matches[2],
+			botAction:          botAction,
+			clusters:           clusters,
+			appsEventsStorage:  appsEventsStorage,
+			ApplicationUpdater: github,
 		}, nil
 	}
 	return nil, fmt.Errorf("unknown job command `%s`", botAction.GetCommand())

@@ -19,19 +19,19 @@ type JobDispatcher struct {
 	actionReceiver    chan *bot.BotAction
 	appsStatesStorage storage.StateRepository
 	appsEventsStorage storage.EventsRepository
-	github            *delivery.OpsRepo
+	appUpdater        delivery.Updater
 }
 
 func NewJobDispatcher(k8sService *clusters.K8S,
 	appsStatesStorage storage.StateRepository,
 	appsEventsStorage storage.EventsRepository,
-	github *delivery.OpsRepo) JobDispatcher {
+	appUpdater delivery.Updater) JobDispatcher {
 	return JobDispatcher{
 		k8sService:        k8sService,
 		actionReceiver:    make(chan *bot.BotAction),
 		appsStatesStorage: appsStatesStorage,
 		appsEventsStorage: appsEventsStorage,
-		github:            github,
+		appUpdater:        appUpdater,
 	}
 }
 
@@ -45,7 +45,7 @@ func (d *JobDispatcher) Run() {
 			return
 		}
 
-		j, err := jobs.NewJob(botAction, d.appsStatesStorage, d.appsEventsStorage, d.k8sService.GetClustersCopy(), d.github)
+		j, err := jobs.NewJob(botAction, d.appsStatesStorage, d.appsEventsStorage, d.k8sService.GetClustersCopy(), d.appUpdater)
 		if err != nil {
 			botAction.ResponseOnAction(fmt.Sprintf("Something went wrong with command `%s`. Error %s",
 				botAction.GetRawCommand(), err))
