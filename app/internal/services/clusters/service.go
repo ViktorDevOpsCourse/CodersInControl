@@ -72,6 +72,9 @@ func (k *K8S) GetCluster(clusterName string) (*Cluster, error) {
 
 type ClustersCopy map[string]Cluster
 
-func (c ClustersCopy) GetCluster(clusterName string) Cluster {
-	return c[clusterName]
+func (c ClustersCopy) GetCluster(clusterName string) (Cluster, error) {
+	if cluster, ok := c[clusterName]; ok {
+		return cluster, nil
+	}
+	return Cluster{}, fmt.Errorf("cluster for env `%s` not found", clusterName)
 }

@@ -17,7 +17,7 @@ func NewDiffJob(botAction *bot.BotAction,
 	clusters clusters.ClustersCopy) (*DiffJob, error) {
 
 	currentClusterName := botAction.GetCommandArgs()
-	if _, ok := clusters[currentClusterName]; !ok {
+	if _, err := clusters.GetCluster(currentClusterName); err != nil {
 		return nil, fmt.Errorf("invalid command or unknow environment. Accept `@bot diff environment`")
 	}
 	return &DiffJob{
@@ -47,8 +47,11 @@ func (d *DiffJob) ResponseToBot(message string) {
 }
 
 func (d *DiffJob) compareApps(ctx context.Context) string {
+
+	cluster, _ := d.clusters.GetCluster(d.currentClusterName)
+	baseApps := cluster.Applications
 	message := ""
-	baseApps := d.clusters[d.currentClusterName].Applications
+
 	for clusterName, cluster := range d.clusters {
 		if clusterName == d.currentClusterName {
 			continue

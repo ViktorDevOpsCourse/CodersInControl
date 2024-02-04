@@ -61,15 +61,20 @@ func (p *UpdateAppJob) Launch(ctx context.Context, jobDone chan bool) {
 
 	p.ResponseToBot(fmt.Sprintf("image: `%s` promoting :runner:", p.BuildTag))
 
-	if strings.Contains(p.clusters[p.ClusterName].Applications[p.AppName].Image, p.BuildTag) {
+	cluster, err := p.clusters.GetCluster(p.ClusterName)
+	if err != nil {
+		p.ResponseToBot(fmt.Sprintf("error occured while get cluster `%s`", p.ClusterName))
+		return
+	}
+
+	p.currentAppState = cluster.GetApplicationByName(p.AppName)
+
+	if strings.Contains(p.currentAppState.Image, p.BuildTag) {
 		p.ResponseToBot(fmt.Sprintf("image: `%s` already promoted on %s", p.BuildTag, p.ClusterName))
 		return
 	}
 
-	cluster := p.clusters.GetCluster(p.ClusterName)
-	p.currentAppState = cluster.GetApplicationByName(p.AppName)
-
-	err := p.ApplicationUpdater.Update(delivery.Application{
+	err = p.ApplicationUpdater.Update(delivery.Application{
 		FilePath: fmt.Sprintf("apps/%s/%s-values.yaml", p.ClusterName, p.AppName),
 		Version:  p.BuildTag,
 	})
