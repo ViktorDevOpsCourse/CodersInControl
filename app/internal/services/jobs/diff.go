@@ -13,6 +13,20 @@ type DiffJob struct {
 	currentEnv string
 }
 
+func NewDiffJob(botAction *bot.BotAction,
+	clusters map[string]clusters.Cluster) (*DiffJob, error) {
+
+	currentEnv := botAction.GetCommandArgs()
+	if _, ok := clusters[currentEnv]; !ok {
+		return nil, fmt.Errorf("invalid command or unknow environment. Accept `@bot diff environment`")
+	}
+	return &DiffJob{
+		botAction:  botAction,
+		clusters:   clusters,
+		currentEnv: botAction.GetCommandArgs(),
+	}, nil
+}
+
 func (d *DiffJob) Launch(ctx context.Context, jobDone chan bool) {
 	if len(d.clusters) <= 1 {
 		d.ResponseToBot("you have 1 or less clusters")

@@ -9,11 +9,14 @@ import (
 	"github.com/viktordevopscourse/codersincontrol/app/internal/services/delivery"
 	"github.com/viktordevopscourse/codersincontrol/app/internal/storage"
 	"github.com/viktordevopscourse/codersincontrol/app/pkg/logger"
+	"regexp"
 	"strings"
 	"time"
 )
 
-type PromoteJob struct {
+var rePromote = regexp.MustCompile(`(\S+)@(\S+)\s+to\s+(\w+)`)
+
+type PromoteApp struct {
 	botAction          *bot.BotAction
 	AppName            string
 	BuildTag           string
@@ -23,7 +26,30 @@ type PromoteJob struct {
 	ApplicationUpdater delivery.Updater
 }
 
-func (p *PromoteJob) Launch(ctx context.Context, jobDone chan bool) {
+func NewPromoteJob(
+	botAction *bot.BotAction,
+	appsEventsStorage storage.EventsRepository,
+	clusters map[string]clusters.Cluster,
+	appUpdater delivery.Updater) (*PromoteApp, error) {
+
+	matches := rePromote.FindStringSubmatch(botAction.GetRawCommand())
+	err := isValidPromote(matches)
+	if err != nil {
+		return nil, fmt.Errorf("failed processing command with args `%s`. Reason `%s`", botAction.GetRawCommand(), err)
+	}
+
+	return &PromoteApp{
+		AppName:            matches[1],
+		BuildTag:           matches[2],
+		Environment:        matches[3],
+		botAction:          botAction,
+		clusters:           clusters,
+		appsEventsStorage:  appsEventsStorage,
+		ApplicationUpdater: appUpdater,
+	}, nil
+}
+
+func (p *PromoteApp) Launch(ctx context.Context, jobDone chan bool) {
 	log := logger.FromContext(ctx)
 	p.ResponseToBot(fmt.Sprintf("image: `%s` promoting :runner:", p.BuildTag))
 
@@ -75,14 +101,27 @@ func (p *PromoteJob) Launch(ctx context.Context, jobDone chan bool) {
 
 }
 
-func (p *PromoteJob) GetId() string {
+func (p *PromoteApp) GetId() string {
 	return fmt.Sprintf("%s%s%s", p.botAction.GetCommand(), p.AppName, p.Environment)
 }
 
-func (p *PromoteJob) ResponseToBot(message string) {
+func (p *PromoteApp) ResponseToBot(message string) {
 	p.botAction.ResponseOnAction(message)
 }
 
-func (p *PromoteJob) WaiteDeploymentStatus(status string) {
+func isValidPromote(matches []string) error {
+	if len(matches) < 3 {
+		return fmt.Errorf("invalid command. Accept `@bot promote service@version to environment`")
+	}
+	if matches[1] == "" {
+		return fmt.Errorf("invalid application name")
+	}
+	if matches[2] == "" {
+		return fmt.Errorf("invalid application build tag")
+	}
+	if matches[3] == "" {
+		return fmt.Errorf("invalid application environment")
+	}
 
+	return nil
 }

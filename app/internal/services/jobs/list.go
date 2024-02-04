@@ -12,6 +12,14 @@ type ListJob struct {
 	clusters  map[string]clusters.Cluster
 }
 
+func NewListJob(botAction *bot.BotAction,
+	clusters map[string]clusters.Cluster) (*ListJob, error) {
+	return &ListJob{
+		botAction: botAction,
+		clusters:  clusters,
+	}, nil
+}
+
 func (l *ListJob) Launch(ctx context.Context, jobDone chan bool) {
 	message := ""
 	for env, cluster := range l.clusters {

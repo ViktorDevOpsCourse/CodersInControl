@@ -4,6 +4,8 @@ clusters:
   stage:
     file: "/Users/viktor/.kube/config"
 
+
+
 bot:
   admins:
     - "viktorzhabskiy"
