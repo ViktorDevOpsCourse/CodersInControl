@@ -57,7 +57,7 @@ func (d *JobDispatcher) Run() {
 			continue
 		}
 
-		go d.proceedJob(j)
+		go d.processingJob(j)
 
 	}
 }
@@ -71,7 +71,7 @@ func (d *JobDispatcher) isJobExist(jobId string) bool {
 	return true
 }
 
-func (d *JobDispatcher) proceedJob(job jobs.Job) {
+func (d *JobDispatcher) processingJob(job jobs.Job) {
 	log := logger.FromDefaultContext()
 
 	d.jobs.Store(job.GetId(), true)

@@ -9,11 +9,11 @@ import (
 
 type ListJob struct {
 	botAction *bot.BotAction
-	clusters  map[string]clusters.Cluster
+	clusters  clusters.ClustersCopy
 }
 
 func NewListJob(botAction *bot.BotAction,
-	clusters map[string]clusters.Cluster) (*ListJob, error) {
+	clusters clusters.ClustersCopy) (*ListJob, error) {
 	return &ListJob{
 		botAction: botAction,
 		clusters:  clusters,

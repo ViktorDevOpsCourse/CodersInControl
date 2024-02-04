@@ -25,7 +25,7 @@ type Job interface {
 func NewJob(botAction *bot.BotAction,
 	appsStatesStorage storage.StateRepository,
 	appsEventsStorage storage.EventsRepository,
-	clusters map[string]clusters.Cluster,
+	clusters clusters.ClustersCopy,
 	appUpdater delivery.Updater) (Job, error) {
 
 	switch botAction.GetCommand() {
@@ -34,8 +34,9 @@ func NewJob(botAction *bot.BotAction,
 	case JobDiff:
 		return NewDiffJob(botAction, clusters)
 	case JobPromote:
-		return NewPromoteJob(
+		return NewUpdateAppJob(
 			botAction,
+			appsStatesStorage,
 			appsEventsStorage,
 			clusters,
 			appUpdater)

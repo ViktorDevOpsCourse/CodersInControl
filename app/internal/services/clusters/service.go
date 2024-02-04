@@ -7,8 +7,10 @@ import (
 	"sync"
 )
 
+type Clusters map[string]*Cluster
+
 type K8S struct {
-	clusters map[string]*Cluster // map[environment]Cluster
+	clusters Clusters // map[environment]Cluster
 	sync.RWMutex
 }
 
@@ -18,7 +20,7 @@ func NewK8SService(cfg Config,
 	log := logger.FromDefaultContext()
 
 	k8s := &K8S{
-		clusters: make(map[string]*Cluster),
+		clusters: make(Clusters),
 	}
 
 	for clusterName, kubeConfig := range cfg.Clusters {
@@ -44,18 +46,17 @@ func NewK8SService(cfg Config,
 	return k8s
 }
 
-func (k *K8S) GetClustersCopy() map[string]Cluster {
+func (k *K8S) GetClustersCopy() ClustersCopy {
 
 	k.RLock()
 	defer k.RUnlock()
 
-	copyClusters := make(map[string]Cluster)
+	copyClusters := make(ClustersCopy)
 	for env, cluster := range k.clusters {
 		copyClusters[env] = Cluster{
-			client:       cluster.client,
-			Applications: cluster.Applications,
-			Namespaces:   cluster.Namespaces,
-			Controller:   cluster.Controller,
+			Applications:    cluster.Applications,
+			Namespaces:      cluster.Namespaces,
+			EnvironmentName: cluster.EnvironmentName,
 		}
 	}
 
@@ -67,4 +68,10 @@ func (k *K8S) GetCluster(env string) (*Cluster, error) {
 		return cluster, nil
 	}
 	return nil, fmt.Errorf("cluster for env `%s` not found", env)
+}
+
+type ClustersCopy map[string]Cluster
+
+func (c ClustersCopy) GetCluster(clusterName string) Cluster {
+	return c[clusterName]
 }

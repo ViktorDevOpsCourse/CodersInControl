@@ -16,8 +16,8 @@ func NewRollBackJob(
 	botAction *bot.BotAction,
 	appsStatesStorage storage.StateRepository,
 	appsEventsStorage storage.EventsRepository,
-	clusters map[string]clusters.Cluster,
-	appUpdater delivery.Updater) (*PromoteApp, error) {
+	clusters clusters.ClustersCopy,
+	appUpdater delivery.Updater) (*UpdateAppJob, error) {
 
 	matches := reRollBack.FindStringSubmatch(botAction.GetRawCommand())
 	err := isValidRollback(matches)
@@ -33,7 +33,7 @@ func NewRollBackJob(
 		return nil, fmt.Errorf("error occured while processing rollback: `%s`", err)
 	}
 
-	return &PromoteApp{
+	return &UpdateAppJob{
 		AppName:            matches[1],
 		BuildTag:           prevAppState.Image,
 		Environment:        matches[2],

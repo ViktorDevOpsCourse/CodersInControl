@@ -142,16 +142,6 @@ func (c *Cluster) updateEventHandler(oldObj, newObj interface{}) {
 		log.Error(err)
 	}
 
-	if status == RunningStatus {
-		prevAppState := c.GetApplicationByName(newApp.GetName())
-		err = c.appsStatesStorage.Save(c.EnvironmentName, prevAppState.GetName(), storage.State{
-			Image: prevAppState.Image,
-		})
-		if err != nil {
-			log.Error(err)
-		}
-	}
-
 	c.updateAppCurrentState(newApp, status)
 
 }

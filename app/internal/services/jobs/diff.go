@@ -9,12 +9,12 @@ import (
 
 type DiffJob struct {
 	botAction  *bot.BotAction
-	clusters   map[string]clusters.Cluster
+	clusters   clusters.ClustersCopy
 	currentEnv string
 }
 
 func NewDiffJob(botAction *bot.BotAction,
-	clusters map[string]clusters.Cluster) (*DiffJob, error) {
+	clusters clusters.ClustersCopy) (*DiffJob, error) {
 
 	currentEnv := botAction.GetCommandArgs()
 	if _, ok := clusters[currentEnv]; !ok {
@@ -34,36 +34,7 @@ func (d *DiffJob) Launch(ctx context.Context, jobDone chan bool) {
 		return
 	}
 
-	message := ""
-	currentApps := d.clusters[d.currentEnv].Applications
-	for env, cluster := range d.clusters {
-		if env == d.currentEnv {
-			continue
-		}
-
-		message = fmt.Sprintf("%s\n\ndifference between: `%s` and `%s` \n\n", message, d.currentEnv, env)
-		for name, app := range cluster.Applications {
-
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				currentApp := currentApps[name]
-
-				// check if found same app on other env
-				if currentApp.Name == "" {
-					continue
-				}
-
-				differenceMessage := d.compareApps(currentApp, app, env)
-
-				message = fmt.Sprintf("%s app: *%s* ```%s```",
-					message, name, differenceMessage)
-			}
-		}
-	}
-
-	d.ResponseToBot(message)
+	d.ResponseToBot(d.compareApps(ctx))
 	jobDone <- true
 }
 
@@ -75,7 +46,40 @@ func (d *DiffJob) ResponseToBot(message string) {
 	d.botAction.ResponseOnAction(message)
 }
 
-func (d *DiffJob) compareApps(currentApp, otherApp clusters.Application, otherEnv string) string {
+func (d *DiffJob) compareApps(ctx context.Context) string {
+	message := ""
+	baseApps := d.clusters[d.currentEnv].Applications
+	for env, cluster := range d.clusters {
+		if env == d.currentEnv {
+			continue
+		}
+
+		message = fmt.Sprintf("%s\n\ndifference between: `%s` and `%s` \n\n", message, d.currentEnv, env)
+		for name, app := range cluster.Applications {
+
+			select {
+			case <-ctx.Done():
+				return ""
+			default:
+				baseApp := baseApps[name]
+
+				// check if found same app on other env
+				if baseApp.Name == "" {
+					continue
+				}
+
+				differenceMessage := d.compareApp(baseApp, app, env)
+
+				message = fmt.Sprintf("%s app: *%s* ```%s```",
+					message, name, differenceMessage)
+			}
+		}
+	}
+
+	return message
+}
+
+func (d *DiffJob) compareApp(currentApp, otherApp clusters.Application, otherEnv string) string {
 	compareMessage := ""
 	isFoundDisagreements := false
 
