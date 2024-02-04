@@ -8,22 +8,22 @@ import (
 )
 
 type DiffJob struct {
-	botAction  *bot.BotAction
-	clusters   clusters.ClustersCopy
-	currentEnv string
+	botAction          *bot.BotAction
+	clusters           clusters.ClustersCopy
+	currentClusterName string
 }
 
 func NewDiffJob(botAction *bot.BotAction,
 	clusters clusters.ClustersCopy) (*DiffJob, error) {
 
-	currentEnv := botAction.GetCommandArgs()
-	if _, ok := clusters[currentEnv]; !ok {
+	currentClusterName := botAction.GetCommandArgs()
+	if _, ok := clusters[currentClusterName]; !ok {
 		return nil, fmt.Errorf("invalid command or unknow environment. Accept `@bot diff environment`")
 	}
 	return &DiffJob{
-		botAction:  botAction,
-		clusters:   clusters,
-		currentEnv: botAction.GetCommandArgs(),
+		botAction:          botAction,
+		clusters:           clusters,
+		currentClusterName: botAction.GetCommandArgs(),
 	}, nil
 }
 
@@ -48,13 +48,13 @@ func (d *DiffJob) ResponseToBot(message string) {
 
 func (d *DiffJob) compareApps(ctx context.Context) string {
 	message := ""
-	baseApps := d.clusters[d.currentEnv].Applications
-	for env, cluster := range d.clusters {
-		if env == d.currentEnv {
+	baseApps := d.clusters[d.currentClusterName].Applications
+	for clusterName, cluster := range d.clusters {
+		if clusterName == d.currentClusterName {
 			continue
 		}
 
-		message = fmt.Sprintf("%s\n\ndifference between: `%s` and `%s` \n\n", message, d.currentEnv, env)
+		message = fmt.Sprintf("%s\n\ndifference between: `%s` and `%s` \n\n", message, d.currentClusterName, clusterName)
 		for name, app := range cluster.Applications {
 
 			select {
@@ -68,7 +68,7 @@ func (d *DiffJob) compareApps(ctx context.Context) string {
 					continue
 				}
 
-				differenceMessage := d.compareApp(baseApp, app, env)
+				differenceMessage := d.compareApp(baseApp, app, clusterName)
 
 				message = fmt.Sprintf("%s app: *%s* ```%s```",
 					message, name, differenceMessage)
@@ -79,7 +79,7 @@ func (d *DiffJob) compareApps(ctx context.Context) string {
 	return message
 }
 
-func (d *DiffJob) compareApp(currentApp, otherApp clusters.Application, otherEnv string) string {
+func (d *DiffJob) compareApp(currentApp, otherApp clusters.Application, otherClusterName string) string {
 	compareMessage := ""
 	isFoundDisagreements := false
 
@@ -87,18 +87,18 @@ func (d *DiffJob) compareApp(currentApp, otherApp clusters.Application, otherEnv
 		if *currentApp.Replicas != *otherApp.Replicas {
 			isFoundDisagreements = true
 			compareMessage = fmt.Sprintf("%s%s replicas - %d \n%s replicas - %d\n",
-				compareMessage, d.currentEnv, *currentApp.Replicas, otherEnv, *otherApp.Replicas)
+				compareMessage, d.currentClusterName, *currentApp.Replicas, otherClusterName, *otherApp.Replicas)
 		}
 	}
 
 	if currentApp.Image != otherApp.Image {
 		isFoundDisagreements = true
 		compareMessage = fmt.Sprintf("%s%s image - %s \n%s image - %s\n",
-			compareMessage, d.currentEnv, currentApp.Image, otherEnv, otherApp.Image)
+			compareMessage, d.currentClusterName, currentApp.Image, otherClusterName, otherApp.Image)
 	}
 
 	if !isFoundDisagreements {
-		compareMessage = fmt.Sprintf("%s and %s same", d.currentEnv, otherEnv)
+		compareMessage = fmt.Sprintf("%s and %s same", d.currentClusterName, otherClusterName)
 	}
 
 	return compareMessage

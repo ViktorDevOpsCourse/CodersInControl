@@ -17,7 +17,7 @@ type Cluster struct {
 	Applications           map[string]Application // map[appName]
 	Namespaces             map[string]Namespace   // map[nsName]
 	Controller             controller.Controller
-	EnvironmentName        string
+	ClusterName            string
 	lastAppResourceVersion map[string]string // map[appName]revision
 
 	appsStatesStorage storage.StateRepository
@@ -35,7 +35,7 @@ func NewCluster(clusterName string,
 		client:                 client,
 		Applications:           make(map[string]Application),
 		Namespaces:             make(map[string]Namespace),
-		EnvironmentName:        clusterName,
+		ClusterName:            clusterName,
 		appsStatesStorage:      appsStatesStorage,
 		appsEventsStorage:      appsEventsStorage,
 		lastAppResourceVersion: make(map[string]string),
@@ -131,7 +131,7 @@ func (c *Cluster) updateEventHandler(oldObj, newObj interface{}) {
 
 	c.lastAppResourceVersion[newApp.GetName()] = newApp.ResourceVersion
 
-	err = c.appsEventsStorage.Save(c.EnvironmentName, newApp.GetName(), storage.ApplicationEvent{
+	err = c.appsEventsStorage.Save(c.ClusterName, newApp.GetName(), storage.ApplicationEvent{
 		AppName:         newApp.GetName(),
 		Image:           c.getImageVersion(newApp),
 		EventTime:       time.Now(),

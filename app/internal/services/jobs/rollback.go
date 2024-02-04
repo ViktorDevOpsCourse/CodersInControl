@@ -36,7 +36,7 @@ func NewRollBackJob(
 	return &UpdateAppJob{
 		AppName:            matches[1],
 		BuildTag:           prevAppState.Image,
-		Environment:        matches[2],
+		ClusterName:        matches[2],
 		botAction:          botAction,
 		clusters:           clusters,
 		appsEventsStorage:  appsEventsStorage,

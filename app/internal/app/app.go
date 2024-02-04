@@ -20,8 +20,8 @@ func Run(ctx context.Context) error {
 	k8sConfig := clusters.Config{
 		Clusters: make(map[string]string),
 	}
-	for environment, clusterOption := range cfg.K8S.Clusters {
-		k8sConfig.Clusters[environment] = clusterOption.File
+	for clusterName, clusterOption := range cfg.K8S.Clusters {
+		k8sConfig.Clusters[clusterName] = clusterOption.File
 	}
 
 	appsStatesStorage := storage.NewApplicationsStates()

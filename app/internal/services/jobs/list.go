@@ -22,8 +22,8 @@ func NewListJob(botAction *bot.BotAction,
 
 func (l *ListJob) Launch(ctx context.Context, jobDone chan bool) {
 	message := ""
-	for env, cluster := range l.clusters {
-		message = fmt.Sprintf("%s\n\nenvironment: `%s`\n\n", message, env)
+	for clusterName, cluster := range l.clusters {
+		message = fmt.Sprintf("%s\n\nenvironment: `%s`\n\n", message, clusterName)
 		for name, app := range cluster.Applications {
 			select {
 			case <-ctx.Done():

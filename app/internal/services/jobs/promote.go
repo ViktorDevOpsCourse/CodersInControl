@@ -20,7 +20,7 @@ type UpdateAppJob struct {
 	botAction          *bot.BotAction
 	AppName            string
 	BuildTag           string
-	Environment        string
+	ClusterName        string
 	appsStatesStorage  storage.StateRepository
 	appsEventsStorage  storage.EventsRepository
 	clusters           clusters.ClustersCopy
@@ -44,7 +44,7 @@ func NewUpdateAppJob(
 	return &UpdateAppJob{
 		AppName:            matches[1],
 		BuildTag:           matches[2],
-		Environment:        matches[3],
+		ClusterName:        matches[3],
 		botAction:          botAction,
 		clusters:           clusters,
 		appsStatesStorage:  appsStatesStorage,
@@ -61,21 +61,21 @@ func (p *UpdateAppJob) Launch(ctx context.Context, jobDone chan bool) {
 
 	p.ResponseToBot(fmt.Sprintf("image: `%s` promoting :runner:", p.BuildTag))
 
-	if strings.Contains(p.clusters[p.Environment].Applications[p.AppName].Image, p.BuildTag) {
-		p.ResponseToBot(fmt.Sprintf("image: `%s` already promoted on %s", p.BuildTag, p.Environment))
+	if strings.Contains(p.clusters[p.ClusterName].Applications[p.AppName].Image, p.BuildTag) {
+		p.ResponseToBot(fmt.Sprintf("image: `%s` already promoted on %s", p.BuildTag, p.ClusterName))
 		return
 	}
 
-	cluster := p.clusters.GetCluster(p.Environment)
+	cluster := p.clusters.GetCluster(p.ClusterName)
 	p.currentAppState = cluster.GetApplicationByName(p.AppName)
 
 	err := p.ApplicationUpdater.Update(delivery.Application{
-		FilePath: fmt.Sprintf("apps/%s/%s-values.yaml", p.Environment, p.AppName),
+		FilePath: fmt.Sprintf("apps/%s/%s-values.yaml", p.ClusterName, p.AppName),
 		Version:  p.BuildTag,
 	})
 	if err != nil {
 		log.Errorf("update image version `%s` failed. Err %s ", p.BuildTag, err)
-		p.ResponseToBot(fmt.Sprintf("image: `%s` promoted on %s. github update image version `%[1]s` failed. Err %[3]s ", p.BuildTag, p.Environment, err))
+		p.ResponseToBot(fmt.Sprintf("image: `%s` promoted on %s. github update image version `%[1]s` failed. Err %[3]s ", p.BuildTag, p.ClusterName, err))
 		return
 	}
 
@@ -84,7 +84,7 @@ func (p *UpdateAppJob) Launch(ctx context.Context, jobDone chan bool) {
 }
 
 func (p *UpdateAppJob) GetId() string {
-	return fmt.Sprintf("%s%s%s", p.botAction.GetCommand(), p.AppName, p.Environment)
+	return fmt.Sprintf("%s%s%s", p.botAction.GetCommand(), p.AppName, p.ClusterName)
 }
 
 func (p *UpdateAppJob) ResponseToBot(message string) {
@@ -100,8 +100,8 @@ func (p *UpdateAppJob) waitDeploymentEvent(ctx context.Context) {
 		select {
 		case <-ticker.C:
 
-			log.Infof("check promote finished events for %s in %s", p.AppName, p.Environment)
-			appEvent, err := p.appsEventsStorage.GetAndRemove(p.Environment, p.AppName)
+			log.Infof("check promote finished events for %s in %s", p.AppName, p.ClusterName)
+			appEvent, err := p.appsEventsStorage.GetAndRemove(p.ClusterName, p.AppName)
 			if err != nil {
 				if errors.Is(err, storage.NotFoundError) {
 					continue
@@ -114,15 +114,15 @@ func (p *UpdateAppJob) waitDeploymentEvent(ctx context.Context) {
 				continue
 			}
 
-			log.Infof("find promote finished event for %s in %s. Status `%s`", p.AppName, p.Environment, appEvent.Status)
+			log.Infof("find promote finished event for %s in %s. Status `%s`", p.AppName, p.ClusterName, appEvent.Status)
 			if clusters.Status(appEvent.Status) != clusters.RunningStatus {
-				p.ResponseToBot(fmt.Sprintf("image: `%s` promoted on %s with status %s", p.BuildTag, p.Environment, appEvent.Status))
+				p.ResponseToBot(fmt.Sprintf("image: `%s` promoted on %s with status %s", p.BuildTag, p.ClusterName, appEvent.Status))
 				return
 			}
 
 			// TODO can be do it beautiful
 			if p.botAction.GetCommand() == "promote" {
-				err = p.appsStatesStorage.Save(p.Environment, p.currentAppState.GetName(), storage.State{
+				err = p.appsStatesStorage.Save(p.ClusterName, p.currentAppState.GetName(), storage.State{
 					Image: p.currentAppState.Image,
 				})
 				if err != nil {
@@ -130,7 +130,7 @@ func (p *UpdateAppJob) waitDeploymentEvent(ctx context.Context) {
 				}
 			}
 
-			p.ResponseToBot(fmt.Sprintf("image: `%s` promoted on %s. Status %s :tada:", p.BuildTag, p.Environment, appEvent.Status))
+			p.ResponseToBot(fmt.Sprintf("image: `%s` promoted on %s. Status %s :tada:", p.BuildTag, p.ClusterName, appEvent.Status))
 			return
 
 		case <-ctx.Done():

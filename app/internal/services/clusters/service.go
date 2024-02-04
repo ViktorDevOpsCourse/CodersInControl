@@ -10,7 +10,7 @@ import (
 type Clusters map[string]*Cluster
 
 type K8S struct {
-	clusters Clusters // map[environment]Cluster
+	clusters Clusters // map[clusterName]Cluster
 	sync.RWMutex
 }
 
@@ -52,22 +52,22 @@ func (k *K8S) GetClustersCopy() ClustersCopy {
 	defer k.RUnlock()
 
 	copyClusters := make(ClustersCopy)
-	for env, cluster := range k.clusters {
-		copyClusters[env] = Cluster{
-			Applications:    cluster.Applications,
-			Namespaces:      cluster.Namespaces,
-			EnvironmentName: cluster.EnvironmentName,
+	for clusterName, cluster := range k.clusters {
+		copyClusters[clusterName] = Cluster{
+			Applications: cluster.Applications,
+			Namespaces:   cluster.Namespaces,
+			ClusterName:  cluster.ClusterName,
 		}
 	}
 
 	return copyClusters
 }
 
-func (k *K8S) GetCluster(env string) (*Cluster, error) {
-	if cluster, ok := k.clusters[env]; ok {
+func (k *K8S) GetCluster(clusterName string) (*Cluster, error) {
+	if cluster, ok := k.clusters[clusterName]; ok {
 		return cluster, nil
 	}
-	return nil, fmt.Errorf("cluster for env `%s` not found", env)
+	return nil, fmt.Errorf("cluster for env `%s` not found", clusterName)
 }
 
 type ClustersCopy map[string]Cluster
