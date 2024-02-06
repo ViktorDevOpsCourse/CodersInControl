@@ -92,6 +92,7 @@ func (s *SlackBot) handleEventTypeEventsAPI(event socketmode.Event) {
 func (s *SlackBot) appMentionEventHandler(event *slackevents.AppMentionEvent) {
 	log := logger.FromContext(s.ctx)
 
+	log.Debugf("accepted bot event %#v", event)
 	isAllow, err := s.auth.hasPermissions(event.User)
 	if err != nil {
 		log.Error(err)

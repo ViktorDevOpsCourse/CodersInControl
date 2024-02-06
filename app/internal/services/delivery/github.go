@@ -6,7 +6,7 @@ import (
 	"github.com/google/go-github/v58/github"
 	"golang.org/x/oauth2"
 	"log"
-	"strings"
+	"regexp"
 )
 
 type FluxRepo struct {
@@ -30,6 +30,8 @@ type Application struct {
 type Config struct {
 	Repo Repo
 }
+
+var updateVersionRegexp = regexp.MustCompile(`version:\s*"([^"]+)"`)
 
 func NewFluxRepo(token string, config Config) Updater {
 
@@ -82,7 +84,7 @@ func (g *FluxRepo) Update(args interface{}) error {
 		return fmt.Errorf("github not decode file content: %v", err)
 	}
 
-	newContent := strings.ReplaceAll(content, `version: "*"`, fmt.Sprintf(`version: "%s"`, appConfig.Version))
+	newContent := updateVersionRegexp.ReplaceAllString(content, fmt.Sprintf(`version: "%s"`, appConfig.Version))
 
 	sha := fileContent.GetSHA()
 
@@ -97,7 +99,7 @@ func (g *FluxRepo) Update(args interface{}) error {
 		context.Background(),
 		g.repoOwner,
 		g.repoName,
-		appConfig.Version,
+		appConfig.FilePath,
 		commit)
 	if err != nil {
 		return fmt.Errorf("github could not update file: %v", err)

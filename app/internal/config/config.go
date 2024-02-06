@@ -20,8 +20,9 @@ type Config struct {
 }
 
 type FileConfig struct {
-	Clusters map[string]Cluster `yaml:"clusters"`
-	Bot      struct {
+	Clusters   map[string]Cluster `yaml:"clusters"`
+	Namespaces []string           `yaml:"namespaces"`
+	Bot        struct {
 		Admins []string `yaml:"admins"`
 	} `yaml:"bot"`
 	Repo struct {
@@ -35,7 +36,8 @@ type Cluster struct {
 }
 
 type K8SConfig struct {
-	Clusters map[string]Cluster
+	Clusters   map[string]Cluster
+	Namespaces []string
 }
 
 type BotConfig struct {
@@ -93,7 +95,8 @@ func ParseAppConfig(version string) (Config, error) {
 	}
 
 	cfg.K8S = K8SConfig{
-		Clusters: fc.Clusters,
+		Clusters:   fc.Clusters,
+		Namespaces: fc.Namespaces,
 	}
 
 	cfg.Github.RepoOwner = fc.Repo.Owner

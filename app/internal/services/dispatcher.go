@@ -45,6 +45,8 @@ func (d *JobDispatcher) Run() {
 			return
 		}
 
+		log.Debugf("JobDispatcher accepted bot action %#v", botAction)
+
 		j, err := jobs.NewJob(botAction, d.appsStatesStorage, d.appsEventsStorage, d.k8sService.GetClustersCopy(), d.appUpdater)
 		if err != nil {
 			botAction.ResponseOnAction(fmt.Sprintf("Something went wrong with command `%s`. Error %s",
@@ -52,6 +54,7 @@ func (d *JobDispatcher) Run() {
 			continue
 		}
 
+		log.Debugf("JobDispatcher create new job %#v", j)
 		if d.isJobExist(j.GetId()) {
 			botAction.ResponseOnAction("action already processing, wait please")
 			continue
@@ -76,7 +79,7 @@ func (d *JobDispatcher) processingJob(job jobs.Job) {
 
 	d.jobs.Store(job.GetId(), true)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*15)
 	defer cancel()
 
 	jobDone := make(chan bool)

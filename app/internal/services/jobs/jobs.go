@@ -34,7 +34,7 @@ func NewJob(botAction *bot.BotAction,
 	case JobDiff:
 		return NewDiffJob(botAction, clusters)
 	case JobPromote:
-		return NewUpdateAppJob(
+		return NewPromoteJob(
 			botAction,
 			appsStatesStorage,
 			appsEventsStorage,

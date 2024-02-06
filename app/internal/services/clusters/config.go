@@ -1,5 +1,6 @@
 package clusters
 
 type Config struct {
-	Clusters map[string]string // map[cluster_name]config_file_path
+	Clusters          map[string]string // map[cluster_name]config_file_path
+	WatchedNamespaces []string
 }

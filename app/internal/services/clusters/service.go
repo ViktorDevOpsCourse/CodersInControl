@@ -30,7 +30,7 @@ func NewK8SService(cfg Config,
 			continue
 		}
 
-		cluster := NewCluster(clusterName, client, appsStatesStorage, appsEventsStorage)
+		cluster := NewCluster(clusterName, client, cfg.WatchedNamespaces, appsStatesStorage, appsEventsStorage)
 
 		log.Infof("Connected to k8s cluster `%s`", clusterName)
 

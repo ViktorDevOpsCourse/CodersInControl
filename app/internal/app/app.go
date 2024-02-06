@@ -18,7 +18,8 @@ func Run(ctx context.Context) error {
 	}
 
 	k8sConfig := clusters.Config{
-		Clusters: make(map[string]string),
+		Clusters:          make(map[string]string),
+		WatchedNamespaces: cfg.K8S.Namespaces,
 	}
 	for clusterName, clusterOption := range cfg.K8S.Clusters {
 		k8sConfig.Clusters[clusterName] = clusterOption.File

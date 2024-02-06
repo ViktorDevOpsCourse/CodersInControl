@@ -19,6 +19,7 @@ type Cluster struct {
 	Controller             controller.Controller
 	ClusterName            string
 	lastAppResourceVersion map[string]string // map[appName]revision
+	watchedNamespaces      map[string]struct{}
 
 	appsStatesStorage storage.StateRepository
 	appsEventsStorage storage.EventsRepository
@@ -27,9 +28,15 @@ type Cluster struct {
 
 func NewCluster(clusterName string,
 	client Client,
+	watchedNamespaces []string,
 	appsStatesStorage storage.StateRepository,
 	appsEventsStorage storage.EventsRepository) *Cluster {
 	log := logger.FromDefaultContext()
+
+	wNamespaces := make(map[string]struct{})
+	for _, namespace := range watchedNamespaces {
+		wNamespaces[namespace] = struct{}{}
+	}
 
 	c := &Cluster{
 		client:                 client,
@@ -39,6 +46,7 @@ func NewCluster(clusterName string,
 		appsStatesStorage:      appsStatesStorage,
 		appsEventsStorage:      appsEventsStorage,
 		lastAppResourceVersion: make(map[string]string),
+		watchedNamespaces:      wNamespaces,
 	}
 
 	deploymentController, err := controller.NewController(client.http, controller.ConfigController{
@@ -83,7 +91,7 @@ func (c *Cluster) addEventHandler(obj interface{}) {
 	log := logger.FromDefaultContext()
 	deployment := obj.(*v12.Deployment)
 
-	if !c.IsWatchedNamespace(deployment.Namespace) {
+	if !c.IsWatchingNamespace(deployment.Namespace) {
 		return
 	}
 
@@ -100,6 +108,8 @@ func (c *Cluster) addEventHandler(obj interface{}) {
 		return
 	}
 
+	log.Debugf("Cluster controller addEventHandler, found app %s , status %s with state %#v", deployment.GetName(), status, deployment)
+
 	c.updateAppCurrentState(deployment, status)
 }
 
@@ -108,7 +118,7 @@ func (c *Cluster) updateEventHandler(oldObj, newObj interface{}) {
 
 	newApp := newObj.(*v12.Deployment)
 
-	if !c.IsWatchedNamespace(newApp.Namespace) {
+	if !c.IsWatchingNamespace(newApp.Namespace) {
 		return
 	}
 
@@ -117,6 +127,8 @@ func (c *Cluster) updateEventHandler(oldObj, newObj interface{}) {
 		log.Error(err)
 		return
 	}
+
+	log.Debugf("Cluster controller updateEventHandler, app %s changed status on %s", newApp.GetName(), status)
 
 	if status == InProgressStatus {
 		return
@@ -141,6 +153,8 @@ func (c *Cluster) updateEventHandler(oldObj, newObj interface{}) {
 	if err != nil {
 		log.Error(err)
 	}
+
+	log.Debugf("Cluster controller updateEventHandler, updated app %s , status %s with state %#v", newApp.GetName(), status, newApp)
 
 	c.updateAppCurrentState(newApp, status)
 
@@ -172,12 +186,13 @@ func (c *Cluster) updateAppCurrentState(app *v12.Deployment, status Status) {
 	}
 }
 
-func (c *Cluster) IsWatchedNamespace(namespace string) bool {
-	if _, ok := excludeNamespaces[namespace]; ok {
-		return false
+func (c *Cluster) IsWatchingNamespace(namespace string) bool {
+	if _, ok := c.watchedNamespaces[namespace]; ok {
+		return true
 	}
-	return true
+	return false
 }
+
 func (c *Cluster) getImageVersion(app *v12.Deployment) string {
 	if len(app.Spec.Template.Spec.Containers) != 0 {
 		imageParts := strings.Split(app.Spec.Template.Spec.Containers[0].Image, ":")

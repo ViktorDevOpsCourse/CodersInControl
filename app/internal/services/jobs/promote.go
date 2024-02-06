@@ -28,7 +28,7 @@ type UpdateAppJob struct {
 	currentAppState    clusters.Application
 }
 
-func NewUpdateAppJob(
+func NewPromoteJob(
 	botAction *bot.BotAction,
 	appsStatesStorage storage.StateRepository,
 	appsEventsStorage storage.EventsRepository,
@@ -59,6 +59,8 @@ func (p *UpdateAppJob) Launch(ctx context.Context, jobDone chan bool) {
 		jobDone <- true
 	}()
 
+	log.Debugf("Promote Job Launch")
+
 	p.ResponseToBot(fmt.Sprintf("image: `%s` promoting :runner:", p.BuildTag))
 
 	cluster, err := p.clusters.GetCluster(p.ClusterName)
@@ -67,12 +69,16 @@ func (p *UpdateAppJob) Launch(ctx context.Context, jobDone chan bool) {
 		return
 	}
 
+	log.Debugf("Promote Job for cluster %s", p.ClusterName)
+
 	p.currentAppState = cluster.GetApplicationByName(p.AppName)
 
 	if strings.Contains(p.currentAppState.Image, p.BuildTag) {
 		p.ResponseToBot(fmt.Sprintf("image: `%s` already promoted on %s", p.BuildTag, p.ClusterName))
 		return
 	}
+
+	log.Debugf("Promote Job received current appstate %#v", p.currentAppState)
 
 	err = p.ApplicationUpdater.Update(delivery.Application{
 		FilePath: fmt.Sprintf("apps/%s/%s-values.yaml", p.ClusterName, p.AppName),
@@ -83,6 +89,8 @@ func (p *UpdateAppJob) Launch(ctx context.Context, jobDone chan bool) {
 		p.ResponseToBot(fmt.Sprintf("image: `%s` promoted on %s. github update image version `%[1]s` failed. Err %[3]s ", p.BuildTag, p.ClusterName, err))
 		return
 	}
+
+	log.Debugf("Promote Job delivered changes")
 
 	p.waitDeploymentEvent(ctx)
 
@@ -98,6 +106,7 @@ func (p *UpdateAppJob) ResponseToBot(message string) {
 
 func (p *UpdateAppJob) waitDeploymentEvent(ctx context.Context) {
 	log := logger.FromContext(ctx)
+	log.Debugf("Promote Job delivered changes check promote finished events for %s in %s", p.AppName, p.ClusterName)
 
 	ticker := time.NewTicker(time.Second * 5)
 	defer ticker.Stop()
@@ -105,7 +114,6 @@ func (p *UpdateAppJob) waitDeploymentEvent(ctx context.Context) {
 		select {
 		case <-ticker.C:
 
-			log.Infof("check promote finished events for %s in %s", p.AppName, p.ClusterName)
 			appEvent, err := p.appsEventsStorage.GetAndRemove(p.ClusterName, p.AppName)
 			if err != nil {
 				if errors.Is(err, storage.NotFoundError) {

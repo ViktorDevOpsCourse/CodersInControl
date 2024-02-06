@@ -1,9 +1,11 @@
 clusters:
-#  dev:
-#    file: "/Users/viktor/.kube/config"
-  stage:
-    file: "/Users/viktor/.kube/config"
+  production:
+    file: "./kube.prod"
+  staging:
+    file: "./kube.stage"
 
+namespaces:
+  - "podinfo"
 
 
 bot:
