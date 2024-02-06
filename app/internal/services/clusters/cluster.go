@@ -108,7 +108,7 @@ func (c *Cluster) addEventHandler(obj interface{}) {
 		return
 	}
 
-	log.Debugf("Cluster controller addEventHandler, found app %s , status %s with state %#v", deployment.GetName(), status, deployment)
+	log.Debugf("Cluster controller addEventHandler, found app %s , status %s", deployment.GetName(), status)
 
 	c.updateAppCurrentState(deployment, status)
 }
@@ -154,7 +154,7 @@ func (c *Cluster) updateEventHandler(oldObj, newObj interface{}) {
 		log.Error(err)
 	}
 
-	log.Debugf("Cluster controller updateEventHandler, updated app %s , status %s with state %#v", newApp.GetName(), status, newApp)
+	log.Debugf("Cluster controller updateEventHandler, updated app %s , status %s", newApp.GetName(), status)
 
 	c.updateAppCurrentState(newApp, status)
 
