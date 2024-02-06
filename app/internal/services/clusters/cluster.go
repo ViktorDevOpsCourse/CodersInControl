@@ -110,7 +110,7 @@ func (c *Cluster) addEventHandler(obj interface{}) {
 
 	log.Debugf("Cluster controller addEventHandler, found app %s , status %s", deployment.GetName(), status)
 
-	c.updateAppCurrentState(deployment, status)
+	c.setInitialAppState(deployment, status)
 
 	// save current state for rollback
 	err = c.appsStatesStorage.Save(c.ClusterName, deployment.GetName(), storage.State{
@@ -164,7 +164,7 @@ func (c *Cluster) updateEventHandler(oldObj, newObj interface{}) {
 
 	log.Debugf("Cluster controller updateEventHandler, updated app %s , status %s", newApp.GetName(), status)
 
-	c.updateAppCurrentState(newApp, status)
+	c.setInitialAppState(newApp, status)
 
 }
 
@@ -176,7 +176,7 @@ func (c *Cluster) deleteEventHandler(obj interface{}) {
 	delete(c.Applications, deployment.GetName())
 }
 
-func (c *Cluster) updateAppCurrentState(app *v12.Deployment, status Status) {
+func (c *Cluster) setInitialAppState(app *v12.Deployment, status Status) {
 
 	c.Applications[app.GetName()] = Application{
 		Name:                 app.GetName(),
