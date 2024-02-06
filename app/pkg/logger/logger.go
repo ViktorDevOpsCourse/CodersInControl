@@ -20,7 +20,7 @@ func GetDefaultLogger() *logrus.Logger {
 		def = logrus.New()
 	}
 
-	def.SetLevel(logrus.InfoLevel)
+	def.SetLevel(logrus.DebugLevel)
 	def.SetFormatter(initFormatterFromOption("json"))
 	def.SetOutput(os.Stdout)
 	return def
