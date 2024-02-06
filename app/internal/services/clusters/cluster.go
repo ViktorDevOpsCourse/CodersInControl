@@ -111,6 +111,14 @@ func (c *Cluster) addEventHandler(obj interface{}) {
 	log.Debugf("Cluster controller addEventHandler, found app %s , status %s", deployment.GetName(), status)
 
 	c.updateAppCurrentState(deployment, status)
+
+	// save current state for rollback
+	err = c.appsStatesStorage.Save(c.ClusterName, deployment.GetName(), storage.State{
+		Image: c.getImageVersion(deployment),
+	})
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 func (c *Cluster) updateEventHandler(oldObj, newObj interface{}) {
