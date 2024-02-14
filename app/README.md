@@ -6,7 +6,6 @@ Repo contains slack bot. You can add it in slack channel and work with your k8s 
 * Slack bot api, bot tokens
 * GitHub flux infra repo
 * k8s clusters with flux
-* 
 ----
 ## Requirements
 First you need create all credentials to work with external dependencies.
@@ -16,7 +15,7 @@ Setup below env variables
 export SLACK_BOT_TOKEN=<xoxb-...>
 export SLACK_APP_TOKEN=<xapp-...>
 export GITHUB_API_TOKEN=<github_token>
-export SERVICE_CONFIG_FILE_PATH='path to config'
+export SERVICE_CONFIG_FILE_PATH=<path_to_config>
 ```
 
 Configure slack bot [config](config.example.yaml) file which you can to indicate in SERVICE_CONFIG_FILE_PATH
@@ -31,6 +30,9 @@ bot: # related to slack to settings
   admins: # users who have permissions on user bot inside slack
     - "viktorzhabskiy"
 
+namespaces: # list of watching namespaces in clusters 
+  - "podinfo" # ns name
+  
 repo: # config for github. Set work repo and branch
   owner: "ViktorDevOpsCourse"
   name: "flux-image-updates" # repo name
@@ -120,8 +122,7 @@ Like promote but deploying last success deployment version
 ## Main system components
 `bot` - provide interface to work with slack. Accept events and processing it
 
-`k8s service` - contain all applications from clusters which are specified in the configuration to all namespaces.
-We can some namespaces exclude from monitoring. TODO set it namespaces in config file
+`k8s service` - contain all applications from, clusters which are specified in the configuration, for specified namespaces.
 
 `k8s controller` - watch for deployments in clusters. Adding, Updating, Deleting applications into/from k8s service
 

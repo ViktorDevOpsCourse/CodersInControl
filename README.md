@@ -8,11 +8,11 @@ This bot is designed to simplify the process of managing application versions on
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
 - [Usage](#usage)
-  - [`list`](#list)
-  - [`diff`](#diff)
-  - [`promote`](#promote)
-  - [`rollback`](#rollback)
   - [How it works](#how-it-works)
+    - [list](#list)
+    - [diff](#diff)
+    - [promote](#promote)
+    - [rollback](#rollback)
 - [Requirements](#requirements)
   - [Functional](#functional)
   - [Non-Functional](#non-functional)
@@ -27,7 +27,7 @@ Ensure that you have the following prerequisites before installing the Slack bot
 
 - Configured and running multi-environment Kubernetes clusters (for demo see [/demo/README.md](./demo/README.md))
 - Installed and configured Flux to implement a GitOps approach to managing both infrastructure and applications. (for demo see [/demo/README.md](./demo/README.md))
-- Setup and run slackbot service and add bot to slack channel ([instruction](/app/README.md))
+- Setup and run slackbot service and add bot to slack channel ([instruction](./app/README.md))
 
 ### Installation
 
@@ -47,14 +47,28 @@ To use the Slackbot, follow these steps to install and set up the necessary cred
      export SLACK_BOT_TOKEN=<xoxb-...>
      export SLACK_APP_TOKEN=<xapp-...>
      export GITHUB_API_TOKEN=<github_token>
-     export SERVICE_CONFIG_FILE_PATH='path to config'
+     export SERVICE_CONFIG_FILE_PATH=<path_to_config>
      ```
    
-   - Configure the Slack bot using the provided [config](config.example.yaml) file. Indicate the file path in `SERVICE_CONFIG_FILE_PATH`. The configuration includes settings for clusters, Slack bot, and the GitHub repository.
+   - Configure the Slack bot using the provided [config](./app/config.example.yaml) file. Indicate the file path in `SERVICE_CONFIG_FILE_PATH`. The configuration includes settings for clusters, Slack bot, and the GitHub repository.
 
 ## Usage bot
 
-More details you can find in [`./app/README.md`](./app/README.md)
+More details you can find in  [docs](./app/README.md)
+
+### How It Works
+
+The Slack bot accepts actions in the Slack channel, creating a job based on those actions. The job has access to all clusters and applications in different namespaces. The primary focus is deploying applications via `Deployment` Kubernetes resources, as the bot monitors deployments and tracks them automatically.
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: podinfo # application name inside service
+```
+
+- **podinfo** - we use it like application name inside service and track and detect applications git `deployment.GetName()`
+- **@botName** - name for your bot, you setted it when created bot inside slack
 
 Once the Slackbot is set up, you can interact with it using various commands in the Slack channel:
 
@@ -96,20 +110,6 @@ The `rollback` command reverts the application version update to the previous ve
 
 - `prometheus-deployment`: Service name (must match the name in the deployment manifest `metadata.name`).
 - `stage`: Target environment/cluster (must match the name in the config bot file `SERVICE_CONFIG_FILE_PATH` clusters list).
-
-### How It Works
-
-The Slack bot accepts actions in the Slack channel, creating a job based on those actions. The job has access to all clusters and applications in different namespaces. The primary focus is deploying applications via `Deployment` Kubernetes resources, as the bot monitors deployments and tracks them automatically.
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: podinfo # application name inside service
-```
-
-- **podinfo** - we use it like application name inside service and track and detect applications git `deployment.GetName()`
-- **@botName** - name for your bot, you setted it when created bot inside slack 
 
 ## Requirements
 
